@@ -124,22 +124,25 @@ html,body{width:100vw;height:100vh;overflow:hidden;font-family:'Open Sans',sans-
   .decor-top-left .order-red-banner{width:clamp(40px,10vw,70px);margin-top:0}
   .decor-top-right{display:none}
   
-  .left-col,.right-col{padding:0;gap:1.2vh;order:1}
-  .left-col{order:1}
-  .right-col{order:2}
+  .left-col,.right-col{display:contents}
+  .left-col .plate:not(.plate-hero){order:1}
+  .right-col .plate:not(.plate-hero){order:2}
+  .bottom-center{order:3}
+  .left-col .plate-hero{order:4}
+  .right-col .plate-hero{order:5}
   
   .plate{width:85vw;min-height:55px;font-size:clamp(.7rem,3.5vw,1rem);padding:1.2vh 3vw;height:auto!important}
   .plate-hero .plate-medal{height:clamp(28px,8vw,45px)}
   .plate-hero .plate-medal-left{left:10px}
   .plate-hero .plate-medal-right{right:10px}
   
-  .bottom-center{margin-top:0;order:3}
   .bottom-center .plate{width:85vw}
   
   /* Book mobile */
   .book-container{width:96vw;height:96vh}
   .book-header{padding:1vh 3vw;flex-wrap:nowrap;gap:1vw}
-  .book-title{font-size:clamp(.8rem,3.5vw,1.1rem)}
+  .book-title{font-size:clamp(.8rem,3.5vw,1.1rem);flex:1;min-width:0}
+  .book-page-info{white-space:nowrap}
   .book-body{flex-direction:column;overflow-y:auto}
   .book-left{width:100%;padding:2vh 4vw;border-right:none;border-bottom:1px solid rgba(201,168,76,.2);justify-content:center}
   .book-left img{max-width:60%;max-height:30vh}
