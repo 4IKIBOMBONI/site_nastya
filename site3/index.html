@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Интерактивный музей СВКИ</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="loader" id="loader"><img src="images/emblem.png" alt="Загрузка..."></div>
+<div class="subpage-loader" id="subpageLoader"><img src="images/emblem.png" alt="Загрузка..."></div>
+
+<div class="main-page" id="mainPage">
+  <div class="decor-top-left">
+    <img src="images/zhukov.png" alt="Орден Жукова" class="order-zhukov">
+    <img src="images/red_banner.png" alt="Орден Красного Знамени" class="order-red-banner">
+  </div>
+  <div class="decor-top-right">
+    <img src="images/dzerzhinsky.png" alt="Знак Дзержинского" class="dzerzhinsky">
+  </div>
+  <div class="title">Саратовский военный ордена Жукова краснознаменный<br>институт войск национальной гвардии<br>Российской Федерации</div>
+  <div class="content">
+    <div class="left-col">
+      <a class="plate plate-hero" onclick="openPage('heroes_ussr')"><img src="images/hero_ussr.png" alt="" class="plate-medal plate-medal-left"><span class="plate-text">Герои<br>Советского Союза</span><span class="s1"></span><span class="s2"></span></a>
+      <a class="plate" onclick="openPage('creation_1932')"><span>Создание 4-ой<br>пограничной школы<br>войск ОГПУ 1932 год</span><span class="s1"></span><span class="s2"></span></a>
+      <a class="plate" onclick="openPage('war_years')"><span>Саратовское военное<br>училище в годы Великой<br>Отечественной войны<br>(1941-1945 гг.)</span><span class="s1"></span><span class="s2"></span></a>
+    </div>
+    <div class="center-col">
+      <div class="emblem-area">
+        <div class="medal-left"><img src="images/hero_ussr.png" alt="Герой СССР"></div>
+        <img src="images/emblem.png" alt="Эмблема СВКИ" class="emblem">
+        <div class="medal-right"><img src="images/hero_russia.png" alt="Герой РФ"></div>
+      </div>
+    </div>
+    <div class="right-col">
+      <a class="plate plate-hero" onclick="openPage('heroes_russia')"><span class="plate-text">Герои<br>Российской Федерации</span><img src="images/hero_russia.png" alt="" class="plate-medal plate-medal-right"><span class="s1"></span><span class="s2"></span></a>
+      <a class="plate" onclick="openPage('postwar')"><span>Послевоенный период<br>развития военного<br>училища (1945-1991гг.)</span><span class="s1"></span><span class="s2"></span></a>
+      <a class="plate" onclick="openPage('conflicts')"><span>Участие личного состава военного училища<br>в ликвидации межнациональных<br>конфликтов в стране<br>( конец 1980-х - начало 1990-х гг.)</span><span class="s1"></span><span class="s2"></span></a>
+    </div>
+    <div class="bottom-center">
+      <a class="plate" onclick="openPage('modern')"><span>Саратовский военный институт<br>на современном этапе своего<br>развития<br>(с 1992 г. - по настоящее время)</span><span class="s1"></span><span class="s2"></span></a>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay containers -->
+<div class="subpage-overlay" id="overlay_heroes_ussr"></div>
+<div class="subpage-overlay" id="overlay_heroes_russia"></div>
+<div class="subpage-overlay" id="overlay_postwar"></div>
+<div class="subpage-overlay" id="overlay_soc_labor"></div>
+<div class="subpage-overlay" id="overlay_creation_1932"></div>
+<div class="subpage-overlay" id="overlay_war_years"></div>
+<div class="subpage-overlay" id="overlay_conflicts"></div>
+<div class="subpage-overlay" id="overlay_modern"></div>
+
+<script src="data_heroes_ussr.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
