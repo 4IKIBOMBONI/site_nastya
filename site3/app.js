@@ -24,11 +24,13 @@ function openPage(id) {
     else if (id === 'modern') renderModern();
     else renderPlaceholder(id, getTitle(id));
     document.getElementById('overlay_' + id).classList.add('active');
+    document.body.classList.add('overlay-open');
   }, 700);
 }
 
 function closePage(id) {
   document.getElementById('overlay_' + id).classList.remove('active');
+  document.body.classList.remove('overlay-open');
   currentBook = null;
 }
 
@@ -118,6 +120,7 @@ function bookNext() {
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     document.querySelectorAll('.subpage-overlay.active').forEach(function(el) { el.classList.remove('active'); });
+    document.body.classList.remove('overlay-open');
     currentBook = null;
   }
   if (currentBook) {
@@ -149,6 +152,7 @@ document.addEventListener('keydown', function(e) {
 document.addEventListener('click', function(e) {
   if (e.target.classList.contains('subpage-overlay')) {
     e.target.classList.remove('active');
+    document.body.classList.remove('overlay-open');
     currentBook = null;
   }
 });

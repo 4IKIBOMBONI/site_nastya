@@ -50,6 +50,9 @@ html,body{width:100vw;height:100vh;overflow:hidden;font-family:'Open Sans',sans-
 /* Bottom plate - higher */
 .bottom-center{grid-column:2;grid-row:4;display:flex;align-items:flex-start;justify-content:center;margin-top:-16vh}
 
+/* Body scroll lock when overlay is open */
+body.overlay-open{overflow:hidden!important}
+
 /* OVERLAYS */
 .subpage-overlay{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.92);z-index:1000;justify-content:center;align-items:center}
 .subpage-overlay.active{display:flex;animation:fadeIn .4s ease}
@@ -71,7 +74,7 @@ html,body{width:100vw;height:100vh;overflow:hidden;font-family:'Open Sans',sans-
 .book-container{width:90vw;height:90vh;background:url('images/bg.png') center/cover no-repeat;border:3px solid #c9a84c;border-radius:8px;box-shadow:0 0 60px rgba(201,168,76,.3),0 10px 40px rgba(0,0,0,.7);overflow:hidden;color:#f0e0b0;display:flex;flex-direction:column}
 .book-header{padding:1.2vh 2.5vw;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid rgba(201,168,76,.3);flex-shrink:0}
 .book-title{font-size:clamp(.9rem,1.6vw,1.5rem);font-weight:700;font-style:normal;text-shadow:1px 2px 4px rgba(0,0,0,.7)}
-.book-page-info{color:#c9a84c;font-size:clamp(.75rem,1.1vw,1rem)}
+.book-page-info{color:#c9a84c;font-size:clamp(.75rem,1.1vw,1rem);white-space:nowrap}
 .book-body{flex:1;display:flex;overflow:hidden;min-height:0;align-items:stretch}
 .book-left{width:32%;display:flex;align-items:flex-start;justify-content:center;padding:3vh 2vh 2vh;border-right:1px solid rgba(201,168,76,.2);flex-shrink:0;overflow:hidden}
 .book-left img{max-width:90%;max-height:68vh;object-fit:contain;border:3px solid rgba(201,168,76,.5);border-radius:4px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
@@ -127,7 +130,7 @@ html,body{width:100vw;height:100vh;overflow:hidden;font-family:'Open Sans',sans-
   .left-col,.right-col{display:contents}
   .left-col .plate:not(.plate-hero){order:1}
   .right-col .plate:not(.plate-hero){order:2}
-  .bottom-center{order:3}
+  .bottom-center{order:3;margin-top:0}
   .left-col .plate-hero{order:4}
   .right-col .plate-hero{order:5}
   
@@ -142,7 +145,6 @@ html,body{width:100vw;height:100vh;overflow:hidden;font-family:'Open Sans',sans-
   .book-container{width:96vw;height:96vh}
   .book-header{padding:1vh 3vw;flex-wrap:nowrap;gap:1vw}
   .book-title{font-size:clamp(.8rem,3.5vw,1.1rem);flex:1;min-width:0}
-  .book-page-info{white-space:nowrap}
   .book-body{flex-direction:column;overflow-y:auto}
   .book-left{width:100%;padding:2vh 4vw;border-right:none;border-bottom:1px solid rgba(201,168,76,.2);justify-content:center}
   .book-left img{max-width:60%;max-height:30vh}
