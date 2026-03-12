@@ -61,7 +61,7 @@ function renderGenericBook(overlayId, closeId, data, title, prevFn, nextFn) {
     '<div class="book-body">' +
       '<div class="book-left"><img src="' + page.photo + '" alt="' + page.title + '" onerror="this.parentElement.innerHTML=\'<div style=padding:2vh;color:#c9a84c;text-align:center>Фото будет добавлено</div>\'"></div>' +
       '<div class="book-right">' +
-        '<div class="book-name">' + page.title + '</div>' +
+        (page.title ? '<div class="book-name">' + page.title + '</div>' : '') +
         '<div class="book-bio">' + bioHtml + '</div>' +
       '</div>' +
     '</div>' +
@@ -191,7 +191,7 @@ function updatePostwarBook() {
     '<div class="book-body">' +
       '<div class="book-left"><img src="' + page.photo + '" alt="' + page.title + '"></div>' +
       '<div class="book-right">' +
-        '<div class="book-name">' + page.title + '</div>' +
+        (page.title ? '<div class="book-name">' + page.title + '</div>' : '') +
         '<div class="book-bio">' + bioHtml + '</div>' +
       '</div>' +
     '</div>' +
