@@ -72,8 +72,8 @@ html,body{width:100vw;height:100vh;overflow:hidden;font-family:'Open Sans',sans-
 .book-header{padding:1.2vh 2.5vw;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid rgba(201,168,76,.3);flex-shrink:0}
 .book-title{font-size:clamp(.9rem,1.6vw,1.5rem);font-weight:700;font-style:normal;text-shadow:1px 2px 4px rgba(0,0,0,.7)}
 .book-page-info{color:#c9a84c;font-size:clamp(.75rem,1.1vw,1rem)}
-.book-body{flex:1;display:flex;overflow:hidden;min-height:0;align-items:flex-start}
-.book-left{width:32%;display:flex;align-items:flex-start;justify-content:center;padding:3vh 2vh 2vh;border-right:1px solid rgba(201,168,76,.2)}
+.book-body{flex:1;display:flex;overflow:hidden;min-height:0;align-items:stretch}
+.book-left{width:32%;display:flex;align-items:flex-start;justify-content:center;padding:3vh 2vh 2vh;border-right:1px solid rgba(201,168,76,.2);flex-shrink:0;overflow:hidden}
 .book-left img{max-width:90%;max-height:68vh;object-fit:contain;border:3px solid rgba(201,168,76,.5);border-radius:4px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
 .book-right{width:68%;padding:3vh 3vw 2vh;overflow-y:auto}
 .book-right::-webkit-scrollbar{width:6px}

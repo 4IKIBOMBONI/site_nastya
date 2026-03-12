@@ -16,9 +16,12 @@ function openPage(id) {
   setTimeout(function() {
     loader.classList.remove('active');
     if (id === 'heroes_ussr') renderHeroesUSSRMain();
-    else if (id === 'heroes_russia') renderBook('heroes_russia', HEROES_RUSSIA_PLACEHOLDER, 'Герои Российской Федерации');
+    else if (id === 'heroes_russia') renderHeroesRussiaMain();
     else if (id === 'postwar') renderPostwar();
     else if (id === 'war_years') renderWarYears();
+    else if (id === 'creation_1932') renderCreation();
+    else if (id === 'conflicts') renderConflicts();
+    else if (id === 'modern') renderModern();
     else renderPlaceholder(id, getTitle(id));
     document.getElementById('overlay_' + id).classList.add('active');
   }, 700);
@@ -39,7 +42,35 @@ function getTitle(id) {
   return titles[id] || id;
 }
 
-// ============ BOOK RENDERER ============
+// ============ GENERIC BOOK RENDERER (with scrollable text + fixed photo) ============
+function renderGenericBook(overlayId, closeId, data, title, prevFn, nextFn) {
+  var page = data[currentPage];
+  var bioHtml = page.bio.split('\n\n').map(function(p){ return '<p>' + p + '</p>'; }).join('');
+
+  var el = document.getElementById(overlayId);
+  el.innerHTML = '<div class="book-container">' +
+    '<div class="book-header">' +
+      '<div class="book-title">' + title + '</div>' +
+      '<div style="display:flex;align-items:center;gap:2vw;">' +
+        '<div class="book-page-info">' + (currentPage + 1) + ' / ' + data.length + '</div>' +
+        '<button class="back-btn" onclick="closePage(\'' + closeId + '\')">✕</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="book-body">' +
+      '<div class="book-left"><img src="' + page.photo + '" alt="' + page.title + '" onerror="this.parentElement.innerHTML=\'<div style=padding:2vh;color:#c9a84c;text-align:center>Фото будет добавлено</div>\'"></div>' +
+      '<div class="book-right">' +
+        '<div class="book-name">' + page.title + '</div>' +
+        '<div class="book-bio">' + bioHtml + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="book-nav">' +
+      '<button class="book-nav-btn" onclick="' + prevFn + '()" ' + (currentPage === 0 ? 'disabled' : '') + '>◄ Предыдущий</button>' +
+      '<button class="book-nav-btn" onclick="' + nextFn + '()" ' + (currentPage === data.length - 1 ? 'disabled' : '') + '>Следующий ►</button>' +
+    '</div>' +
+  '</div>';
+}
+
+// ============ BOOK RENDERER (for heroes_russia list) ============
 function renderBook(id, data, title) {
   currentBook = { id: id, data: data, title: title };
   currentPage = 0;
@@ -50,7 +81,7 @@ function updateBook() {
   var d = currentBook.data;
   var hero = d[currentPage];
   var bioHtml = hero.bio.split('\n\n').map(function(p){ return '<p>' + p + '</p>'; }).join('');
-  
+
   var el = document.getElementById('overlay_' + currentBook.id);
   el.innerHTML = '<div class="book-container">' +
     '<div class="book-header">' +
@@ -96,7 +127,16 @@ document.addEventListener('keydown', function(e) {
     } else if (currentBook.id === 'war_years') {
       if (e.key === 'ArrowLeft') warPrev();
       if (e.key === 'ArrowRight') warNext();
-    } else if (currentBook.id === 'heroes_ussr') {
+    } else if (currentBook.id === 'creation_1932') {
+      if (e.key === 'ArrowLeft') creationPrev();
+      if (e.key === 'ArrowRight') creationNext();
+    } else if (currentBook.id === 'conflicts') {
+      if (e.key === 'ArrowLeft') conflictsPrev();
+      if (e.key === 'ArrowRight') conflictsNext();
+    } else if (currentBook.id === 'modern') {
+      if (e.key === 'ArrowLeft') modernPrev();
+      if (e.key === 'ArrowRight') modernNext();
+    } else if (currentBook.id === 'heroes_ussr' || currentBook.id === 'heroes_russia') {
       // handled by gallery detail nav
     } else {
       if (e.key === 'ArrowLeft') bookPrev();
@@ -134,7 +174,7 @@ function updatePostwarBook() {
   var d = currentBook.data;
   var page = d[currentPage];
   var bioHtml = page.bio.split('\n\n').map(function(p){ return '<p>' + p + '</p>'; }).join('');
-  
+
   var el = document.getElementById('overlay_postwar');
   el.innerHTML = '<div class="book-container">' +
     '<div class="book-header">' +
@@ -148,7 +188,6 @@ function updatePostwarBook() {
       '<div class="book-left"><img src="' + page.photo + '" alt="' + page.title + '"></div>' +
       '<div class="book-right">' +
         '<div class="book-name">' + page.title + '</div>' +
-        '<div class="book-rank">Послевоенный период</div>' +
         '<div class="book-bio">' + bioHtml + '</div>' +
       '</div>' +
     '</div>' +
@@ -164,6 +203,7 @@ function postwarNext() { if (currentBook && currentPage < currentBook.data.lengt
 
 // ============ HEROES USSR MAIN (with tabs for USSR + Soc Labor) ============
 function renderHeroesUSSRMain() {
+  currentBook = { id: 'heroes_ussr' };
   renderGalleryUSSR();
 }
 
@@ -227,12 +267,9 @@ function switchTab(tab) {
   }
 }
 
-function bookPrev2() { if (currentPage > 0) { currentPage--; renderBookWithTabs(); } }
-function bookNext2() { if (currentBook && currentPage < currentBook.data.length - 1) { currentPage++; renderBookWithTabs(); } }
-
 // Hero detail (opens from gallery card click)
 function openHeroDetail(type, idx) {
-  var data = type === 'ussr' ? HEROES_USSR : HEROES_SOC_LABOR;
+  var data = type === 'ussr' ? HEROES_USSR : (type === 'russia' ? HEROES_RUSSIA : HEROES_SOC_LABOR);
   var h = data[idx];
   var bioHtml = h.bio.split('\n\n').map(function(p){ return '<p>' + p + '</p>'; }).join('');
   var modal = document.getElementById('overlay_soc_labor');
@@ -259,7 +296,7 @@ function openHeroDetail(type, idx) {
 }
 
 function navHeroDetail(type, idx) {
-  var data = type === 'ussr' ? HEROES_USSR : HEROES_SOC_LABOR;
+  var data = type === 'ussr' ? HEROES_USSR : (type === 'russia' ? HEROES_RUSSIA : HEROES_SOC_LABOR);
   if (idx >= 0 && idx < data.length) openHeroDetail(type, idx);
 }
 
@@ -267,10 +304,34 @@ function closeGalleryDetail() {
   document.getElementById('overlay_soc_labor').classList.remove('active');
 }
 
-// Placeholder for Heroes of Russia (template)
-var HEROES_RUSSIA_PLACEHOLDER = [
-{name:"Фото и данные будут добавлены",photo:"images/heroes_ussr/bankuzov.jpg",rank:"Герой Российской Федерации",bio:"Раздел «Герои Российской Федерации» находится в разработке. Фотографии и биографии 11 Героев России — выпускников Саратовского военного института — будут добавлены в ближайшее время.\n\nСреди них: Белоглазов А.М., Белозёров С.П., Китанин Р.А., Ковалёв А.Г., Никишин А.Н., Палазник Н.А., Паньков М.А., Романов А.А., Филоненко А.М., Шевелёв Н.Н., Яфаров Д.Д."}
-];
+// ============ HEROES RUSSIA ============
+function renderHeroesRussiaMain() {
+  currentBook = { id: 'heroes_russia' };
+  renderGalleryRussia();
+}
+
+function renderGalleryRussia() {
+  var d = HEROES_RUSSIA;
+  var el = document.getElementById('overlay_heroes_russia');
+  var cards = d.map(function(h, i) {
+    return '<div class="gallery-card" onclick="openHeroDetail(\'russia\',' + i + ')">' +
+      '<img src="' + h.photo + '" alt="' + h.name + '">' +
+      '<div class="gallery-card-name">' + h.name + '</div>' +
+    '</div>';
+  }).join('');
+
+  el.innerHTML = '<div class="book-container">' +
+    '<div class="book-header">' +
+      '<div class="book-title">Герои Российской Федерации</div>' +
+      '<div style="display:flex;align-items:center;gap:2vw;">' +
+        '<button class="back-btn" onclick="closePage(\'heroes_russia\')">✕</button>' +
+      '</div>' +
+    '</div>' +
+    '<div style="flex:1;overflow-y:auto;padding:2vh 2vw;">' +
+      '<div class="gallery-grid">' + cards + '</div>' +
+    '</div>' +
+  '</div>';
+}
 
 // ============ WAR YEARS ============
 function renderWarYears() {
@@ -280,33 +341,50 @@ function renderWarYears() {
 }
 
 function updateWarBook() {
-  var d = currentBook.data;
-  var page = d[currentPage];
-  var bioHtml = page.bio.split('\n\n').map(function(p){ return '<p>' + p + '</p>'; }).join('');
-  
-  var el = document.getElementById('overlay_war_years');
-  el.innerHTML = '<div class="book-container">' +
-    '<div class="book-header">' +
-      '<div class="book-title">' + currentBook.title + '</div>' +
-      '<div style="display:flex;align-items:center;gap:2vw;">' +
-        '<div class="book-page-info">' + (currentPage + 1) + ' / ' + d.length + '</div>' +
-        '<button class="back-btn" onclick="closePage(\'war_years\')">✕</button>' +
-      '</div>' +
-    '</div>' +
-    '<div class="book-body">' +
-      '<div class="book-left"><img src="' + page.photo + '" alt="' + page.title + '" onerror="this.parentElement.innerHTML=\'<div style=padding:2vh;color:#c9a84c;text-align:center>Фото будет добавлено</div>\'"></div>' +
-      '<div class="book-right">' +
-        '<div class="book-name">' + page.title + '</div>' +
-        '<div class="book-rank">Великая Отечественная война</div>' +
-        '<div class="book-bio">' + bioHtml + '</div>' +
-      '</div>' +
-    '</div>' +
-    '<div class="book-nav">' +
-      '<button class="book-nav-btn" onclick="warPrev()" ' + (currentPage === 0 ? 'disabled' : '') + '>◄ Предыдущий</button>' +
-      '<button class="book-nav-btn" onclick="warNext()" ' + (currentPage === d.length - 1 ? 'disabled' : '') + '>Следующий ►</button>' +
-    '</div>' +
-  '</div>';
+  renderGenericBook('overlay_war_years', 'war_years', currentBook.data, currentBook.title, 'warPrev', 'warNext');
 }
 
 function warPrev() { if (currentPage > 0) { currentPage--; updateWarBook(); } }
 function warNext() { if (currentBook && currentPage < currentBook.data.length - 1) { currentPage++; updateWarBook(); } }
+
+// ============ CREATION 1932 ============
+function renderCreation() {
+  currentBook = { id: 'creation_1932', data: CREATION_PAGES, title: 'Создание 4-ой пограничной школы войск ОГПУ 1932 год' };
+  currentPage = 0;
+  updateCreationBook();
+}
+
+function updateCreationBook() {
+  renderGenericBook('overlay_creation_1932', 'creation_1932', currentBook.data, currentBook.title, 'creationPrev', 'creationNext');
+}
+
+function creationPrev() { if (currentPage > 0) { currentPage--; updateCreationBook(); } }
+function creationNext() { if (currentBook && currentPage < currentBook.data.length - 1) { currentPage++; updateCreationBook(); } }
+
+// ============ CONFLICTS ============
+function renderConflicts() {
+  currentBook = { id: 'conflicts', data: CONFLICTS_PAGES, title: 'Участие личного состава в ликвидации межнациональных конфликтов (конец 1980-х – начало 1990-х гг.)' };
+  currentPage = 0;
+  updateConflictsBook();
+}
+
+function updateConflictsBook() {
+  renderGenericBook('overlay_conflicts', 'conflicts', currentBook.data, currentBook.title, 'conflictsPrev', 'conflictsNext');
+}
+
+function conflictsPrev() { if (currentPage > 0) { currentPage--; updateConflictsBook(); } }
+function conflictsNext() { if (currentBook && currentPage < currentBook.data.length - 1) { currentPage++; updateConflictsBook(); } }
+
+// ============ MODERN ============
+function renderModern() {
+  currentBook = { id: 'modern', data: MODERN_PAGES, title: 'Саратовский военный институт на современном этапе (с 1992 г. – по настоящее время)' };
+  currentPage = 0;
+  updateModernBook();
+}
+
+function updateModernBook() {
+  renderGenericBook('overlay_modern', 'modern', currentBook.data, currentBook.title, 'modernPrev', 'modernNext');
+}
+
+function modernPrev() { if (currentPage > 0) { currentPage--; updateModernBook(); } }
+function modernNext() { if (currentBook && currentPage < currentBook.data.length - 1) { currentPage++; updateModernBook(); } }
