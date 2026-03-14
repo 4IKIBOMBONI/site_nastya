@@ -102,9 +102,30 @@ function closePage(id) {
 // ============ HERO GALLERY (combined with sub-tabs) ============
 function renderHeroGallery(section) {
   var el = getOverlay(section.slug);
-  var firstChild = section.children && section.children[0];
+  var firstChild = section.children && section.children.length > 0 && section.children[0];
   if (firstChild) {
     renderHeroGalleryTab(section, firstChild.slug);
+  } else if (section.pages && section.pages.length > 0) {
+    // No children but has pages directly - render as gallery
+    var isLarge = section.pages.length > 6;
+    var gridClass = isLarge ? 'gallery-grid-large' : 'gallery-grid';
+    var cards = section.pages.map(function(p, i) {
+      return '<div class="gallery-card" onclick="openHeroDetail(\'' + section.slug + '\',' + i + ')">' +
+        '<img src="' + p.photo + '" alt="' + (p.name || p.title) + '" onerror="this.src=\'images/generals/silhouette.svg\'">' +
+        '<div class="gallery-card-name">' + (p.name || p.title) + '</div></div>';
+    }).join('');
+    el.innerHTML = '<div class="book-container">' +
+      '<div class="book-header">' +
+        '<div class="book-title">' + section.title + '</div>' +
+        '<button class="back-btn" onclick="closePage(\'' + section.slug + '\')">✕</button>' +
+      '</div>' +
+      '<div style="flex:1;overflow-y:auto;padding:2vh 2vw;">' +
+        '<div class="' + gridClass + '">' + cards + '</div>' +
+      '</div></div>';
+    currentGalleryType = section.slug;
+    currentGalleryPages = section.pages;
+  } else {
+    renderPlaceholder(section);
   }
 }
 
@@ -182,7 +203,7 @@ function showHeroDetail(idx) {
   if (idx < 0 || idx >= pages.length) return;
   currentHeroIdx = idx;
   var h = pages[idx];
-  var bioHtml = (h.bio || '').split('\n\n').map(function(p) { return '<p>' + p + '</p>'; }).join('');
+  var bioHtml = (h.bio || '').split('\n\n').map(function(p) { return '<p>' + p.replace(/\n/g, '<br>') + '</p>'; }).join('');
 
   var el = getOverlay('hero_detail');
   el.innerHTML = '<div class="book-container" style="width:88vw;height:88vh;">' +
@@ -261,7 +282,7 @@ function updateBookPage() {
   if (!currentBook) return;
   var pages = currentBook.pages;
   var page = pages[currentPage];
-  var bioHtml = (page.bio || '').split('\n\n').map(function(p) { return '<p>' + p + '</p>'; }).join('');
+  var bioHtml = (page.bio || '').split('\n\n').map(function(p) { return '<p>' + p.replace(/\n/g, '<br>') + '</p>'; }).join('');
   var slug = currentBook.slug;
 
   // Determine template

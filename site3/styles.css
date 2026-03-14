@@ -17,8 +17,8 @@ html,body{width:100vw;height:100vh;overflow:hidden;font-family:'Open Sans',sans-
 .emblem{height:clamp(220px,55vh,500px);filter:drop-shadow(0 4px 20px rgba(0,0,0,.6));object-fit:contain}
 
 .decor-top-left{position:absolute;top:0.5vh;left:1vw;display:flex;align-items:flex-start;gap:1.2vw;z-index:5}
-.decor-top-left .order-zhukov{width:clamp(65px,7.5vw,130px);filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
-.decor-top-left .order-red-banner{width:clamp(55px,6.5vw,110px);filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));margin-top:.5vh}
+.decor-top-left .order-zhukov{height:clamp(90px,11vw,190px);width:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
+.decor-top-left .order-red-banner{height:clamp(90px,11vw,190px);width:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));margin-top:.5vh}
 .decor-top-right{position:absolute;top:0.5vh;right:0.5vw;z-index:5}
 .decor-top-right .dzerzhinsky{width:clamp(200px,25vw,420px);filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
 
@@ -110,8 +110,8 @@ body.overlay-open{overflow:hidden!important}
   .center-col{margin-top:0;padding:0;order:0}
   .emblem{height:clamp(150px,35vh,280px)}
   .decor-top-left{position:relative;top:auto;left:auto;justify-content:center;width:100%;padding:1vh 0;gap:3vw}
-  .decor-top-left .order-zhukov{width:clamp(45px,12vw,80px)}
-  .decor-top-left .order-red-banner{width:clamp(40px,10vw,70px);margin-top:0}
+  .decor-top-left .order-zhukov{height:clamp(50px,14vw,90px);width:auto}
+  .decor-top-left .order-red-banner{height:clamp(50px,14vw,90px);width:auto;margin-top:0}
   .decor-top-right{display:none}
   .left-col,.right-col{display:contents}
   .plate{width:85vw;min-height:55px;font-size:clamp(.7rem,3.5vw,1rem);padding:1.2vh 3vw;height:auto!important}

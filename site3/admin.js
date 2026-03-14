@@ -38,6 +38,37 @@ function doLogout() {
   fetch('/api/admin/logout', { method: 'POST' }).then(function() { showLogin(); });
 }
 
+// ============ HELPERS ============
+function esc(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function helpIcon(text) {
+  return '<span class="help-icon">!<span class="help-tooltip">' + text + '</span></span>';
+}
+
+// Translate section type to Russian
+function typeLabel(type) {
+  var map = {
+    'book': 'книга',
+    'gallery': 'галерея',
+    'group': 'группа',
+    'hero_gallery': 'герои'
+  };
+  return map[type] || type;
+}
+
+// Translate template to Russian
+function templateLabel(tpl) {
+  var map = {
+    'default': 'стандартный',
+    'two_landscape': '2 фото',
+    'one_portrait': '1 фото книжное'
+  };
+  return map[tpl] || tpl;
+}
+
 // ============ SECTIONS ============
 function loadAllSections() {
   fetch('/api/admin/sections').then(function(r) { return r.json(); }).then(function(data) {
@@ -50,20 +81,20 @@ function renderSidebar() {
   var sidebar = document.getElementById('sidebar');
   var topLevel = allSections.filter(function(s) { return !s.parent_id; });
 
-  var html = '<div style="padding:0 1rem .5rem;color:#888;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em">Разделы</div>';
+  var html = '<div style="padding:0 1rem .5rem;color:#a09080;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em">Разделы</div>';
 
   topLevel.forEach(function(s) {
     var isActive = activeSection && activeSection.id === s.id;
     html += '<div class="sidebar-item ' + (isActive ? 'active' : '') + '" onclick="selectSection(' + s.id + ')">' +
       '<span>' + s.title + '</span>' +
-      '<span class="type-badge">' + s.type + '</span></div>';
+      '<span class="type-badge">' + typeLabel(s.type) + '</span></div>';
 
     var children = allSections.filter(function(c) { return c.parent_id === s.id; });
     children.forEach(function(c) {
       var isChildActive = activeSection && activeSection.id === c.id;
       html += '<div class="sidebar-child sidebar-item ' + (isChildActive ? 'active' : '') + '" onclick="selectSection(' + c.id + ')">' +
         '<span>' + c.title + '</span>' +
-        '<span class="type-badge">' + c.type + '</span></div>';
+        '<span class="type-badge">' + typeLabel(c.type) + '</span></div>';
     });
   });
 
@@ -87,31 +118,34 @@ function renderSectionContent(section, pages) {
 
   var html = '<div class="section-header">' +
     '<h2>' + section.title + '</h2>' +
-    '<div style="display:flex;gap:.5rem">' +
+    '<div style="display:flex;gap:.5rem;align-items:center">' +
       '<button class="btn btn-outline btn-sm" onclick="openEditSectionModal(' + section.id + ')">Редактировать раздел</button>' +
+      helpIcon('Изменить название, тип и порядок отображения этого раздела на сайте.') +
       '<button class="btn btn-success btn-sm" onclick="openAddPageModal(' + section.id + ')">+ Добавить страницу</button>' +
+      helpIcon('Создать новую страницу внутри этого раздела. Страница может содержать текст, фото и другую информацию.') +
       '<button class="btn btn-danger btn-sm" onclick="deleteSection(' + section.id + ')">Удалить раздел</button>' +
+      helpIcon('Полностью удалить этот раздел и все его страницы. Это действие необратимо!') +
     '</div></div>';
 
   html += '<div class="form-inline" style="margin-bottom:1.5rem">' +
-    '<div class="form-group"><label>Slug</label><input value="' + esc(section.slug) + '" disabled></div>' +
-    '<div class="form-group"><label>Тип</label><input value="' + section.type + '" disabled></div>' +
-    '<div class="form-group"><label>Порядок</label><input value="' + section.sort_order + '" disabled></div>' +
+    '<div class="form-group"><label>Идентификатор' + helpIcon('Уникальное имя раздела (латиницей), используется в адресной строке сайта.') + '</label><input value="' + esc(section.slug) + '" disabled></div>' +
+    '<div class="form-group"><label>Тип' + helpIcon('Определяет как раздел отображается на сайте: книга — страницы с текстом, галерея — сетка карточек, группа — набор подразделов, герои — галерея героев с вкладками.') + '</label><input value="' + typeLabel(section.type) + '" disabled></div>' +
+    '<div class="form-group"><label>Порядок' + helpIcon('Число, определяющее позицию раздела в списке. Чем меньше число, тем выше раздел.') + '</label><input value="' + section.sort_order + '" disabled></div>' +
   '</div>';
 
   if (pages.length === 0) {
-    html += '<p style="color:#888;text-align:center;padding:2rem">Нет страниц. Нажмите "Добавить страницу" чтобы создать.</p>';
+    html += '<p style="color:#a09080;text-align:center;padding:2rem">Нет страниц. Нажмите «Добавить страницу» чтобы создать.</p>';
   } else {
     pages.forEach(function(p, i) {
       var displayName = p.name || p.title || 'Страница ' + (i + 1);
       var previewText = (p.bio || '').substring(0, 100);
       html += '<div class="page-card">' +
-        (p.photo ? '<img class="page-card-photo" src="' + esc(p.photo) + '" onerror="this.style.display=\'none\'">' : '<div class="page-card-photo" style="display:flex;align-items:center;justify-content:center;color:#555;font-size:.7rem">Нет фото</div>') +
+        (p.photo ? '<img class="page-card-photo" src="' + esc(p.photo) + '" onerror="this.style.display=\'none\'">' : '<div class="page-card-photo" style="display:flex;align-items:center;justify-content:center;color:#a09080;font-size:.7rem">Нет фото</div>') +
         '<div class="page-card-info">' +
           '<h4>' + esc(displayName) + '</h4>' +
           (p.rank ? '<p style="color:#c9a84c">' + esc(p.rank) + '</p>' : '') +
           '<p>' + esc(previewText) + (previewText.length >= 100 ? '...' : '') + '</p>' +
-          '<p style="color:#555;font-size:.7rem">Шаблон: ' + p.template + ' | Порядок: ' + p.sort_order + '</p>' +
+          '<p style="color:#706050;font-size:.7rem">Шаблон: ' + templateLabel(p.template) + ' | Порядок: ' + p.sort_order + '</p>' +
         '</div>' +
         '<div class="page-card-actions">' +
           '<button class="btn btn-outline btn-sm" onclick="openEditPageModal(' + p.id + ')">Ред.</button>' +
@@ -142,16 +176,16 @@ function openAddSectionModal() {
 
   openModal(
     '<h3>Добавить раздел</h3>' +
-    '<div class="form-group"><label>Название</label><input id="mSecTitle"></div>' +
-    '<div class="form-group"><label>Slug (англ, без пробелов)</label><input id="mSecSlug"></div>' +
-    '<div class="form-group"><label>Тип</label><select id="mSecType">' +
-      '<option value="book">Книга (book)</option>' +
-      '<option value="gallery">Галерея (gallery)</option>' +
-      '<option value="group">Группа подразделов (group)</option>' +
-      '<option value="hero_gallery">Галерея героев с табами (hero_gallery)</option>' +
+    '<div class="form-group"><label>Название' + helpIcon('Заголовок раздела, который будет отображаться на сайте и в меню.') + '</label><input id="mSecTitle"></div>' +
+    '<div class="form-group"><label>Идентификатор' + helpIcon('Уникальное имя латиницей без пробелов. Используется в адресной строке. Например: heroes, history, generals.') + '</label><input id="mSecSlug" placeholder="латиницей, без пробелов"></div>' +
+    '<div class="form-group"><label>Тип' + helpIcon('Книга — последовательные страницы с текстом и фото. Галерея — сетка карточек с фото. Группа — контейнер для подразделов. Герои — галерея с вкладками по категориям.') + '</label><select id="mSecType">' +
+      '<option value="book">Книга (страницы с текстом)</option>' +
+      '<option value="gallery">Галерея (сетка карточек)</option>' +
+      '<option value="group">Группа подразделов</option>' +
+      '<option value="hero_gallery">Галерея героев (с вкладками)</option>' +
     '</select></div>' +
-    '<div class="form-group"><label>Родительский раздел</label><select id="mSecParent">' + parentOptions + '</select></div>' +
-    '<div class="form-group"><label>Порядок сортировки</label><input id="mSecOrder" type="number" value="0"></div>' +
+    '<div class="form-group"><label>Родительский раздел' + helpIcon('Если выбрать родительский раздел, этот раздел станет его подразделом и не будет отображаться в главном меню отдельно.') + '</label><select id="mSecParent">' + parentOptions + '</select></div>' +
+    '<div class="form-group"><label>Порядок сортировки' + helpIcon('Число для определения позиции в списке. Разделы с меньшим числом отображаются выше.') + '</label><input id="mSecOrder" type="number" value="0"></div>' +
     '<div class="modal-actions">' +
       '<button class="btn btn-primary" onclick="saveNewSection()">Создать</button>' +
       '<button class="btn btn-outline" onclick="closeModal()">Отмена</button>' +
@@ -184,15 +218,15 @@ function openEditSectionModal(id) {
 
   openModal(
     '<h3>Редактировать раздел</h3>' +
-    '<div class="form-group"><label>Название</label><input id="mSecTitle" value="' + esc(s.title) + '"></div>' +
-    '<div class="form-group"><label>Slug</label><input id="mSecSlug" value="' + esc(s.slug) + '"></div>' +
-    '<div class="form-group"><label>Тип</label><select id="mSecType">' +
+    '<div class="form-group"><label>Название' + helpIcon('Заголовок раздела на сайте.') + '</label><input id="mSecTitle" value="' + esc(s.title) + '"></div>' +
+    '<div class="form-group"><label>Идентификатор' + helpIcon('Уникальное имя латиницей. Изменение может повлиять на ссылки.') + '</label><input id="mSecSlug" value="' + esc(s.slug) + '"></div>' +
+    '<div class="form-group"><label>Тип' + helpIcon('Изменение типа повлияет на отображение раздела на сайте.') + '</label><select id="mSecType">' +
       '<option value="book" ' + (s.type === 'book' ? 'selected' : '') + '>Книга</option>' +
       '<option value="gallery" ' + (s.type === 'gallery' ? 'selected' : '') + '>Галерея</option>' +
       '<option value="group" ' + (s.type === 'group' ? 'selected' : '') + '>Группа</option>' +
       '<option value="hero_gallery" ' + (s.type === 'hero_gallery' ? 'selected' : '') + '>Галерея героев</option>' +
     '</select></div>' +
-    '<div class="form-group"><label>Порядок</label><input id="mSecOrder" type="number" value="' + s.sort_order + '"></div>' +
+    '<div class="form-group"><label>Порядок' + helpIcon('Позиция раздела в списке. Чем меньше число, тем выше.') + '</label><input id="mSecOrder" type="number" value="' + s.sort_order + '"></div>' +
     '<div class="modal-actions">' +
       '<button class="btn btn-primary" onclick="saveEditSection(' + id + ')">Сохранить</button>' +
       '<button class="btn btn-outline" onclick="closeModal()">Отмена</button>' +
@@ -229,26 +263,26 @@ function deleteSection(id) {
 function openAddPageModal(sectionId) {
   openModal(
     '<h3>Добавить страницу</h3>' +
-    '<div class="form-group"><label>Заголовок страницы</label><input id="mPageTitle"></div>' +
-    '<div class="form-group"><label>Имя (для карточек героев/генералов)</label><input id="mPageName"></div>' +
-    '<div class="form-group"><label>Звание/ранг</label><input id="mPageRank"></div>' +
-    '<div class="form-group"><label>Шаблон</label><select id="mPageTemplate">' +
+    '<div class="form-group"><label>Заголовок страницы' + helpIcon('Основной заголовок, который будет отображаться вверху страницы на сайте.') + '</label><input id="mPageTitle"></div>' +
+    '<div class="form-group"><label>Имя' + helpIcon('Имя для карточек героев и генералов. Отображается под фото в галерее.') + '</label><input id="mPageName"></div>' +
+    '<div class="form-group"><label>Звание/ранг' + helpIcon('Воинское звание или должность. Отображается под именем в карточке.') + '</label><input id="mPageRank"></div>' +
+    '<div class="form-group"><label>Шаблон' + helpIcon('Стандартный — 1 фото слева и текст справа. 2 фото — два альбомных фото слева и текст справа. 1 фото книжное — вертикальное фото и текст.') + '</label><select id="mPageTemplate">' +
       '<option value="default">Стандартный (1 фото + текст)</option>' +
       '<option value="two_landscape">2 фото альбомных + текст</option>' +
       '<option value="one_portrait">1 фото книжное + текст</option>' +
     '</select></div>' +
-    '<div class="form-group"><label>Фото 1</label>' +
+    '<div class="form-group"><label>Фото 1' + helpIcon('Загрузите файл или укажите путь к изображению. Это основное фото страницы.') + '</label>' +
       '<div class="photo-upload"><input type="file" id="mPageFile1" accept="image/*" onchange="previewUpload(this,\'mPagePhotoPreview1\')">' +
       '<img id="mPagePhotoPreview1" class="photo-preview" style="display:none"></div>' +
       '<input id="mPagePhoto" placeholder="Или введите путь к фото">' +
     '</div>' +
-    '<div class="form-group"><label>Фото 2 (для шаблона с 2 фото)</label>' +
+    '<div class="form-group"><label>Фото 2' + helpIcon('Дополнительное фото, используется только для шаблона с 2 фото.') + '</label>' +
       '<div class="photo-upload"><input type="file" id="mPageFile2" accept="image/*" onchange="previewUpload(this,\'mPagePhotoPreview2\')">' +
       '<img id="mPagePhotoPreview2" class="photo-preview" style="display:none"></div>' +
-      '<input id="mPagePhoto2" placeholder="Или введите путь к фото 2">' +
+      '<input id="mPagePhoto2" placeholder="Путь к фото 2">' +
     '</div>' +
-    '<div class="form-group"><label>Текст (биография/описание)</label><textarea id="mPageBio" rows="8"></textarea></div>' +
-    '<div class="form-group"><label>Порядок сортировки</label><input id="mPageOrder" type="number" value="0"></div>' +
+    '<div class="form-group"><label>Текст (биография/описание)' + helpIcon('Основной текст страницы. Двойной перенос строки создаёт новый абзац, одиночный — перенос строки.') + '</label><textarea id="mPageBio" rows="8"></textarea></div>' +
+    '<div class="form-group"><label>Порядок сортировки' + helpIcon('Определяет позицию страницы в разделе. Чем меньше число, тем раньше отображается.') + '</label><input id="mPageOrder" type="number" value="0"></div>' +
     '<div class="modal-actions">' +
       '<button class="btn btn-primary" onclick="saveNewPage(' + sectionId + ')">Создать</button>' +
       '<button class="btn btn-outline" onclick="closeModal()">Отмена</button>' +
@@ -318,28 +352,28 @@ function openEditPageModal(pageId) {
 
     openModal(
       '<h3>Редактировать страницу</h3>' +
-      '<div class="form-group"><label>Заголовок</label><input id="mPageTitle" value="' + esc(p.title) + '"></div>' +
-      '<div class="form-group"><label>Имя</label><input id="mPageName" value="' + esc(p.name) + '"></div>' +
-      '<div class="form-group"><label>Звание</label><input id="mPageRank" value="' + esc(p.rank) + '"></div>' +
-      '<div class="form-group"><label>Шаблон</label><select id="mPageTemplate">' +
+      '<div class="form-group"><label>Заголовок' + helpIcon('Основной заголовок страницы.') + '</label><input id="mPageTitle" value="' + esc(p.title) + '"></div>' +
+      '<div class="form-group"><label>Имя' + helpIcon('Имя для карточки в галерее.') + '</label><input id="mPageName" value="' + esc(p.name) + '"></div>' +
+      '<div class="form-group"><label>Звание' + helpIcon('Воинское звание или должность.') + '</label><input id="mPageRank" value="' + esc(p.rank) + '"></div>' +
+      '<div class="form-group"><label>Шаблон' + helpIcon('Определяет расположение фото и текста на странице.') + '</label><select id="mPageTemplate">' +
         '<option value="default" ' + (p.template === 'default' ? 'selected' : '') + '>Стандартный</option>' +
         '<option value="two_landscape" ' + (p.template === 'two_landscape' ? 'selected' : '') + '>2 фото альбомных</option>' +
         '<option value="one_portrait" ' + (p.template === 'one_portrait' ? 'selected' : '') + '>1 фото книжное</option>' +
       '</select></div>' +
-      '<div class="form-group"><label>Фото 1</label>' +
+      '<div class="form-group"><label>Фото 1' + helpIcon('Основное фото. Загрузите новый файл или измените путь.') + '</label>' +
         (p.photo ? '<img src="' + esc(p.photo) + '" style="max-width:100px;max-height:80px;display:block;margin-bottom:.5rem;border-radius:4px" onerror="this.style.display=\'none\'">' : '') +
         '<div class="photo-upload"><input type="file" id="mPageFile1" accept="image/*" onchange="previewUpload(this,\'mPagePhotoPreview1\')">' +
         '<img id="mPagePhotoPreview1" class="photo-preview" style="display:none"></div>' +
         '<input id="mPagePhoto" value="' + esc(p.photo) + '" placeholder="Путь к фото">' +
       '</div>' +
-      '<div class="form-group"><label>Фото 2</label>' +
+      '<div class="form-group"><label>Фото 2' + helpIcon('Дополнительное фото для шаблона с 2 фото.') + '</label>' +
         (p.photo2 ? '<img src="' + esc(p.photo2) + '" style="max-width:100px;max-height:80px;display:block;margin-bottom:.5rem;border-radius:4px" onerror="this.style.display=\'none\'">' : '') +
         '<div class="photo-upload"><input type="file" id="mPageFile2" accept="image/*" onchange="previewUpload(this,\'mPagePhotoPreview2\')">' +
         '<img id="mPagePhotoPreview2" class="photo-preview" style="display:none"></div>' +
         '<input id="mPagePhoto2" value="' + esc(p.photo2 || '') + '" placeholder="Путь к фото 2">' +
       '</div>' +
-      '<div class="form-group"><label>Текст</label><textarea id="mPageBio" rows="10">' + esc(p.bio) + '</textarea></div>' +
-      '<div class="form-group"><label>Порядок</label><input id="mPageOrder" type="number" value="' + p.sort_order + '"></div>' +
+      '<div class="form-group"><label>Текст' + helpIcon('Основной текст. Двойной перенос строки — новый абзац, одиночный — перенос строки.') + '</label><textarea id="mPageBio" rows="10">' + esc(p.bio) + '</textarea></div>' +
+      '<div class="form-group"><label>Порядок' + helpIcon('Позиция страницы в разделе.') + '</label><input id="mPageOrder" type="number" value="' + p.sort_order + '"></div>' +
       '<div class="modal-actions">' +
         '<button class="btn btn-primary" onclick="saveEditPage(' + pageId + ',' + p.section_id + ')">Сохранить</button>' +
         '<button class="btn btn-outline" onclick="closeModal()">Отмена</button>' +
@@ -378,10 +412,4 @@ function deletePage(pageId, sectionId) {
   fetch('/api/admin/pages/' + pageId, { method: 'DELETE' }).then(function() {
     selectSection(sectionId);
   });
-}
-
-// ============ HELPERS ============
-function esc(str) {
-  if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
