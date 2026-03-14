@@ -118,7 +118,7 @@ app.get('/api/admin/sections', requireAdmin, (req, res) => {
 
 app.post('/api/admin/sections', requireAdmin, (req, res) => {
   const { slug, title, type, parent_id, icon, sort_order } = req.body;
-  if (!slug || !title) return res.status(400).json({ error: 'slug and title required' });
+  if (!slug || !title) return res.status(400).json({ error: 'Необходимо указать идентификатор и название' });
   try {
     const result = db.prepare(
       'INSERT INTO sections (slug, title, type, parent_id, icon, sort_order) VALUES (?, ?, ?, ?, ?, ?)'
