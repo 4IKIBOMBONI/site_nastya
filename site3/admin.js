@@ -45,7 +45,19 @@ function esc(str) {
 }
 
 function helpIcon(text) {
-  return '<span class="help-icon">!<span class="help-tooltip">' + text + '</span></span>';
+  return '<span class="help-icon" onmouseenter="positionTooltip(this)" ontouchstart="positionTooltip(this)">!<span class="help-tooltip">' + text + '</span></span>';
+}
+
+function positionTooltip(el) {
+  var tip = el.querySelector('.help-tooltip');
+  if (!tip) return;
+  var rect = el.getBoundingClientRect();
+  var tipW = 280;
+  var left = rect.left + rect.width / 2 - tipW / 2;
+  if (left < 8) left = 8;
+  if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
+  tip.style.left = left + 'px';
+  tip.style.top = (rect.bottom + 8) + 'px';
 }
 
 // Translate section type to Russian
