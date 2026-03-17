@@ -8,7 +8,7 @@ var currentHeroIdx = 0;
 
 // ============ INIT ============
 window.addEventListener('load', function() {
-  loadSections().then(function() {
+  loadSections().finally(function() {
     setTimeout(function() {
       document.getElementById('loader').classList.add('hidden');
       document.getElementById('mainPage').classList.add('visible');
@@ -17,9 +17,22 @@ window.addEventListener('load', function() {
 });
 
 function loadSections() {
-  return fetch('/api/sections').then(function(r) { return r.json(); }).then(function(data) {
+  return fetch('api/sections').then(function(r) {
+    if (!r.ok) throw new Error('API error: ' + r.status);
+    return r.json();
+  }).then(function(data) {
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error('No sections returned from API');
+    }
     sections = data;
     renderMainPage();
+  }).catch(function(err) {
+    console.error('loadSections failed:', err);
+    var content = document.getElementById('mainContent');
+    content.innerHTML = '<div style="color:#f0e0b0;text-align:center;padding:4vh 2vw;">' +
+      '<p style="font-size:1.2rem;margin-bottom:1vh;">Ошибка загрузки данных</p>' +
+      '<p style="font-size:0.9rem;color:#c9a84c;">' + err.message + '</p>' +
+      '<p style="font-size:0.8rem;color:#888;margin-top:1vh;">Проверьте: открывается ли /api/sections</p></div>';
   });
 }
 
@@ -74,7 +87,7 @@ function openSection(slug) {
   var loader = document.getElementById('subpageLoader');
   loader.classList.add('active');
 
-  fetch('/api/sections/' + slug).then(function(r) { return r.json(); }).then(function(section) {
+  fetch('api/sections/' + slug).then(function(r) { return r.json(); }).then(function(section) {
     loader.classList.remove('active');
 
     if (section.type === 'hero_gallery') {
@@ -130,7 +143,7 @@ function renderHeroGallery(section) {
 }
 
 function renderHeroGalleryTab(parentSection, activeSlug) {
-  fetch('/api/sections/' + activeSlug).then(function(r) { return r.json(); }).then(function(activeSection) {
+  fetch('api/sections/' + activeSlug).then(function(r) { return r.json(); }).then(function(activeSection) {
     var el = getOverlay(parentSection.slug);
     var tabs = parentSection.children.map(function(c) {
       return '<button class="tab-btn ' + (c.slug === activeSlug ? 'active' : '') +
@@ -188,7 +201,7 @@ function renderGallery(section) {
 function openHeroDetail(type, idx) {
   // Load pages if not cached
   if (currentGalleryType !== type || !currentGalleryPages.length) {
-    fetch('/api/sections/' + type + '/pages').then(function(r) { return r.json(); }).then(function(pages) {
+    fetch('api/sections/' + type + '/pages').then(function(r) { return r.json(); }).then(function(pages) {
       currentGalleryType = type;
       currentGalleryPages = pages;
       showHeroDetail(idx);
@@ -254,7 +267,7 @@ function openChildSection(parentSlug, childSlug) {
   var loader = document.getElementById('subpageLoader');
   loader.classList.add('active');
 
-  fetch('/api/sections/' + childSlug).then(function(r) { return r.json(); }).then(function(section) {
+  fetch('api/sections/' + childSlug).then(function(r) { return r.json(); }).then(function(section) {
     loader.classList.remove('active');
 
     if (section.type === 'gallery') {
