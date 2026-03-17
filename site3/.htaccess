@@ -1,0 +1,7 @@
+RewriteEngine On
+
+# Route /api/* requests to api.php
+RewriteRule ^api/(.*)$ api.php [QSA,L]
+
+# Route /admin to admin.html
+RewriteRule ^admin$ admin.html [L]
