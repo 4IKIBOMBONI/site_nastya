@@ -60,7 +60,8 @@ function initWelcome() {
   });
 
   overlay.classList.add('active');
-  document.body.classList.add('overlay-open');
+  var mutedPlay = video.play();
+  if (mutedPlay && mutedPlay.catch) mutedPlay.catch(function(){});
 }
 
 function closeWelcome() {
@@ -70,7 +71,6 @@ function closeWelcome() {
   if (audio) audio.pause();
   if (video) video.pause();
   if (overlay) overlay.classList.remove('active');
-  document.body.classList.remove('overlay-open');
 }
 
 function loadSections() {

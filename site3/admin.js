@@ -120,7 +120,7 @@ function renderSidebar() {
 function openWelcomeSettings() {
   activeSection = null;
   renderSidebar();
-  fetch('/api/admin/welcome_audio').then(function(r) { return r.json(); }).then(function(d) {
+  fetch('/api/welcome_audio').then(function(r) { return r.json(); }).then(function(d) {
     var currentUrl = d.url || '';
     var main = document.getElementById('mainContent');
     main.innerHTML =
