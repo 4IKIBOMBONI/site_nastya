@@ -12,9 +12,66 @@ window.addEventListener('load', function() {
     setTimeout(function() {
       document.getElementById('loader').classList.add('hidden');
       document.getElementById('mainPage').classList.add('visible');
+      initWelcome();
     }, 1500);
   });
 });
+
+// ============ WELCOME OVERLAY ============
+function initWelcome() {
+  var overlay = document.getElementById('welcomeOverlay');
+  var video = document.getElementById('welcomeVideo');
+  var audio = document.getElementById('welcomeAudio');
+  var hint = document.getElementById('welcomeHint');
+  if (!overlay || !video || !audio) return;
+
+  fetch('api/welcome_audio').then(function(r) { return r.json(); }).then(function(d) {
+    if (d && d.url) {
+      audio.src = d.url;
+    }
+  }).catch(function() {});
+
+  video.addEventListener('error', function() {
+    overlay.classList.remove('active');
+  });
+
+  video.addEventListener('click', function() {
+    if (audio.paused) {
+      video.currentTime = 0;
+      audio.currentTime = 0;
+      var playPromise = video.play();
+      if (playPromise && playPromise.catch) playPromise.catch(function(){});
+      if (audio.src) {
+        var ap = audio.play();
+        if (ap && ap.catch) ap.catch(function(){});
+      }
+      hint.classList.add('hidden');
+    } else {
+      audio.pause();
+      video.pause();
+      hint.classList.remove('hidden');
+    }
+  });
+
+  audio.addEventListener('ended', function() {
+    video.pause();
+    video.currentTime = 0;
+    hint.classList.remove('hidden');
+  });
+
+  overlay.classList.add('active');
+  document.body.classList.add('overlay-open');
+}
+
+function closeWelcome() {
+  var overlay = document.getElementById('welcomeOverlay');
+  var video = document.getElementById('welcomeVideo');
+  var audio = document.getElementById('welcomeAudio');
+  if (audio) audio.pause();
+  if (video) video.pause();
+  if (overlay) overlay.classList.remove('active');
+  document.body.classList.remove('overlay-open');
+}
 
 function loadSections() {
   return fetch('api/sections').then(function(r) {
