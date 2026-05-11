@@ -33,6 +33,16 @@
   <button class="zoom-close" onclick="closeZoom()">✕</button>
 </div>
 
+<!-- Welcome overlay (video + audio) -->
+<div class="welcome-overlay" id="welcomeOverlay">
+  <div class="welcome-content">
+    <video id="welcomeVideo" src="images/welcome.mp4" muted loop playsinline preload="auto"></video>
+    <audio id="welcomeAudio" preload="auto"></audio>
+    <div class="welcome-hint" id="welcomeHint">▶ Нажмите, чтобы включить звук</div>
+    <button class="welcome-close" onclick="closeWelcome()" title="Закрыть">✕</button>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>

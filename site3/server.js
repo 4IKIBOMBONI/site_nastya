@@ -214,7 +214,48 @@ app.post('/api/admin/sections/reorder', requireAdmin, (req, res) => {
 // File upload
 app.post('/api/admin/upload', requireAdmin, upload.single('photo'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
-  res.json({ url: '/uploads/' + req.file.filename });
+  res.json({ url: 'uploads/' + req.file.filename });
+});
+
+// ============ WELCOME AUDIO ============
+
+const audioStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, 'welcome_audio_' + Date.now() + ext);
+  }
+});
+const audioUpload = multer({
+  storage: audioStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (['.mp3', '.ogg', '.wav', '.m4a'].includes(ext)) cb(null, true);
+    else cb(new Error('Только MP3, OGG, WAV, M4A'));
+  }
+});
+
+app.get('/api/welcome_audio', (req, res) => {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('welcome_audio');
+  res.json({ url: row ? row.value : '' });
+});
+
+app.post('/api/admin/welcome_audio', requireAdmin, audioUpload.single('audio'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
+  const url = 'uploads/' + req.file.filename;
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run('welcome_audio', url);
+  res.json({ url });
+});
+
+app.delete('/api/admin/welcome_audio', requireAdmin, (req, res) => {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('welcome_audio');
+  if (row && row.value) {
+    const filePath = path.join(__dirname, row.value);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+  db.prepare('DELETE FROM settings WHERE key = ?').run('welcome_audio');
+  res.json({ success: true });
 });
 
 // Serve admin page

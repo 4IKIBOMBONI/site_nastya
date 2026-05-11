@@ -88,6 +88,13 @@ if ($uri === '/api/sections' && $method === 'GET') {
     respond($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 
+if ($uri === '/api/welcome_audio' && $method === 'GET') {
+    $stmt = $db->prepare('SELECT value FROM settings WHERE key = ?');
+    $stmt->execute(['welcome_audio']);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    respond(['url' => $row ? $row['value'] : '']);
+}
+
 if (preg_match('#^/api/sections/([^/]+)/pages$#', $uri, $m) && $method === 'GET') {
     $slug = $m[1];
     $stmt = $db->prepare('SELECT id FROM sections WHERE slug = ?');
@@ -297,10 +304,44 @@ if ($uri === '/api/admin/upload' && $method === 'POST') {
     $newName = time() . '-' . bin2hex(random_bytes(5)) . '.' . $ext;
     $dest = __DIR__ . '/uploads/' . $newName;
     if (move_uploaded_file($file['tmp_name'], $dest)) {
-        respond(['url' => '/uploads/' . $newName]);
+        respond(['url' => 'uploads/' . $newName]);
     } else {
         respond(['error' => 'Upload failed'], 500);
     }
+}
+
+// ---- Welcome audio ----
+if ($uri === '/api/admin/welcome_audio' && $method === 'GET') {
+    requireAdmin();
+    $stmt = $db->prepare('SELECT value FROM settings WHERE key = ?');
+    $stmt->execute(['welcome_audio']);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    respond(['url' => $row ? $row['value'] : '']);
+}
+
+if ($uri === '/api/admin/welcome_audio' && $method === 'POST') {
+    requireAdmin();
+    if (empty($_FILES['audio'])) respond(['error' => 'Файл не загружен'], 400);
+    $file = $_FILES['audio'];
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if (!in_array($ext, ['mp3', 'ogg', 'wav', 'm4a'])) {
+        respond(['error' => 'Только MP3, OGG, WAV, M4A'], 400);
+    }
+    $newName = 'welcome_audio_' . time() . '.' . $ext;
+    $dest = __DIR__ . '/uploads/' . $newName;
+    if (move_uploaded_file($file['tmp_name'], $dest)) {
+        $url = 'uploads/' . $newName;
+        $db->prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')->execute(['welcome_audio', $url]);
+        respond(['url' => $url]);
+    } else {
+        respond(['error' => 'Ошибка загрузки'], 500);
+    }
+}
+
+if ($uri === '/api/admin/welcome_audio' && $method === 'DELETE') {
+    requireAdmin();
+    $db->prepare('DELETE FROM settings WHERE key = ?')->execute(['welcome_audio']);
+    respond(['success' => true]);
 }
 
 // Not found

@@ -111,7 +111,76 @@ function renderSidebar() {
   });
 
   html += '<div class="sidebar-add" onclick="openAddSectionModal()">+ Добавить раздел</div>';
+  html += '<div style="padding:1rem 1rem .5rem;color:#a09080;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em">Настройки</div>';
+  html += '<div class="sidebar-item" onclick="openWelcomeSettings()"><span>Приветственное аудио</span></div>';
   sidebar.innerHTML = html;
+}
+
+// ============ WELCOME AUDIO SETTINGS ============
+function openWelcomeSettings() {
+  activeSection = null;
+  renderSidebar();
+  fetch('/api/welcome_audio').then(function(r) { return r.json(); }).then(function(d) {
+    var currentUrl = d.url || '';
+    var main = document.getElementById('mainContent');
+    main.innerHTML =
+      '<div class="section-header"><h2>Приветственное аудио</h2></div>' +
+      '<p style="color:#a09080;margin-bottom:1.5rem;line-height:1.6">' +
+        'MP3-файл, который воспроизводится когда посетитель нажимает на видео приветствия на главной странице. ' +
+        'Видео (<code>images/welcome.mp4</code>) меняется только через FTP/файловый менеджер хостинга.' +
+      '</p>' +
+      '<div class="form-group">' +
+        '<label>Текущий файл' + helpIcon('Имя MP3 файла, который сейчас используется на сайте. Если пусто — звук не воспроизводится.') + '</label>' +
+        (currentUrl ?
+          '<div style="display:flex;gap:1rem;align-items:center;margin-bottom:.5rem">' +
+            '<audio controls src="' + esc(currentUrl) + '" style="flex:1"></audio>' +
+            '<button class="btn btn-danger btn-sm" onclick="deleteWelcomeAudio()">Удалить</button>' +
+          '</div>' +
+          '<div style="color:#706050;font-size:.75rem;word-break:break-all">' + esc(currentUrl) + '</div>'
+          : '<div style="color:#a09080;padding:.8rem;border:1px dashed #605040;border-radius:4px">Файл не загружен</div>'
+        ) +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>Загрузить новый файл' + helpIcon('Выберите MP3, OGG, WAV или M4A файл. Максимальный размер зависит от настроек хостинга (обычно до 20 МБ).') + '</label>' +
+        '<input type="file" id="welcomeAudioFile" accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/mp4,.mp3,.ogg,.wav,.m4a">' +
+      '</div>' +
+      '<div class="modal-actions" style="justify-content:flex-start">' +
+        '<button class="btn btn-primary" onclick="uploadWelcomeAudio()">Загрузить</button>' +
+      '</div>' +
+      '<div id="welcomeAudioStatus" style="margin-top:1rem"></div>';
+  });
+}
+
+function uploadWelcomeAudio() {
+  var input = document.getElementById('welcomeAudioFile');
+  var status = document.getElementById('welcomeAudioStatus');
+  if (!input.files || !input.files[0]) {
+    status.innerHTML = '<div style="color:#e05040">Выберите файл</div>';
+    return;
+  }
+  var form = new FormData();
+  form.append('audio', input.files[0]);
+  status.innerHTML = '<div style="color:#c9a84c">Загрузка...</div>';
+  fetch('/api/admin/welcome_audio', { method: 'POST', body: form })
+    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+    .then(function(res) {
+      if (res.ok) {
+        status.innerHTML = '<div style="color:#60c060">Файл загружен</div>';
+        openWelcomeSettings();
+      } else {
+        status.innerHTML = '<div style="color:#e05040">Ошибка: ' + esc(res.data.error || 'неизвестная') + '</div>';
+      }
+    })
+    .catch(function() {
+      status.innerHTML = '<div style="color:#e05040">Ошибка сети</div>';
+    });
+}
+
+function deleteWelcomeAudio() {
+  if (!confirm('Удалить текущее аудио? На сайте звук перестанет воспроизводиться.')) return;
+  fetch('/api/admin/welcome_audio', { method: 'DELETE' }).then(function() {
+    openWelcomeSettings();
+  });
 }
 
 function selectSection(id) {

@@ -95,6 +95,22 @@ body.overlay-open{overflow:hidden!important}
 .group-grid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2vh;padding:3vh 4vw;overflow-y:auto}
 .group-plate{width:clamp(300px,50vw,700px)!important;min-height:clamp(60px,10vh,110px)!important;font-size:clamp(.7rem,1.3vw,1.2rem)!important}
 
+/* WELCOME WIDGET (bottom-right, non-blocking) */
+.welcome-overlay{display:none;position:fixed;right:2vw;bottom:2vh;z-index:1500;pointer-events:none}
+.welcome-overlay.active{display:block;animation:fadeIn .5s ease}
+.welcome-content{position:relative;pointer-events:auto}
+#welcomeVideo{width:clamp(160px,18vw,260px);height:auto;border:3px solid #c9a84c;border-radius:8px;box-shadow:0 0 30px rgba(201,168,76,.5),0 8px 24px rgba(0,0,0,.6);cursor:pointer;display:block;background:#000}
+.welcome-hint{position:absolute;top:-2.8em;left:50%;transform:translateX(-50%);color:#f0e0b0;font-size:clamp(.7rem,.9vw,.95rem);font-weight:700;background:rgba(40,20,0,.92);border:1px solid rgba(201,168,76,.6);padding:.4em .8em;border-radius:4px;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none;animation:welcomePulse 1.6s ease-in-out infinite}
+.welcome-hint.hidden{opacity:0;animation:none}
+@keyframes welcomePulse{0%,100%{transform:translateX(-50%) scale(1);opacity:.9}50%{transform:translateX(-50%) scale(1.04);opacity:1}}
+.welcome-close{position:absolute;top:-10px;right:-10px;background:linear-gradient(160deg,#d4b96a,#c9a84c,#b8953a);color:#2a1a00;border:2px solid #a07828;border-radius:50%;width:28px;height:28px;font-weight:700;font-size:.85rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);transition:transform .15s;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+.welcome-close:hover{transform:scale(1.1)}
+@media (max-width: 600px){
+  .welcome-overlay{right:3vw;bottom:3vw}
+  #welcomeVideo{width:clamp(120px,32vw,180px)}
+  .welcome-hint{font-size:.7rem;top:-2.4em;white-space:normal;max-width:60vw;text-align:center}
+}
+
 /* PHOTO ZOOM */
 .zoom-overlay{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.95);z-index:2000;align-items:center;justify-content:center;cursor:zoom-out}
 .zoom-overlay.active{display:flex;animation:fadeIn .3s ease}
