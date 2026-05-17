@@ -30,6 +30,7 @@ db.exec(`
     bio TEXT DEFAULT '',
     photo TEXT DEFAULT '',
     photo2 TEXT DEFAULT '',
+    photos TEXT DEFAULT '',
     template TEXT DEFAULT 'default',
     sort_order INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -40,6 +41,13 @@ db.exec(`
     value TEXT
   );
 `);
+
+// Migration: add photos column for existing databases
+try {
+  db.prepare("SELECT photos FROM pages LIMIT 1").get();
+} catch (e) {
+  db.exec("ALTER TABLE pages ADD COLUMN photos TEXT DEFAULT ''");
+}
 
 // Default admin password: admin (change in production)
 const existing = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_password');

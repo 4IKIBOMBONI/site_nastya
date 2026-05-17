@@ -76,9 +76,111 @@ function templateLabel(tpl) {
   var map = {
     'default': 'стандартный',
     'two_landscape': '2 фото',
-    'one_portrait': '1 фото книжное'
+    'one_portrait': '1 фото книжное',
+    'carousel': 'карусель фото'
   };
   return map[tpl] || tpl;
+}
+
+// ============ CAROUSEL PHOTOS EDITOR ============
+var carouselPhotos = [];
+
+function parsePhotos(val) {
+  if (!val) return [];
+  if (typeof val === 'object') return val;
+  try {
+    var parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) { return []; }
+}
+
+function renderCarouselPhotosList() {
+  var list = document.getElementById('carouselPhotosList');
+  if (!list) return;
+  if (carouselPhotos.length === 0) {
+    list.innerHTML = '<p style="color:#a09080;padding:.5rem 0;font-size:.85rem">Пока нет фото. Нажмите «Добавить фото».</p>';
+    return;
+  }
+  list.innerHTML = carouselPhotos.map(function(p, i) {
+    var preview = p.preview || p.url || '';
+    return '<div class="carousel-photo-item" data-idx="' + i + '">' +
+      '<div class="carousel-photo-thumb">' +
+        (preview ? '<img src="' + esc(preview) + '" onerror="this.style.display=\'none\'">' : '<div class="carousel-photo-empty">нет фото</div>') +
+      '</div>' +
+      '<div class="carousel-photo-fields">' +
+        '<label>Файл' + helpIcon('Выберите изображение или оставьте поле «URL» с уже загруженным путём.') + '</label>' +
+        '<input type="file" accept="image/*" onchange="setCarouselPhotoFile(' + i + ',this)">' +
+        '<label style="margin-top:.5rem">URL фото</label>' +
+        '<input type="text" value="' + esc(p.url || '') + '" placeholder="uploads/..." oninput="carouselPhotos[' + i + '].url=this.value">' +
+        '<label style="margin-top:.5rem">Подпись' + helpIcon('Текст, который будет показан под фото на сайте.') + '</label>' +
+        '<input type="text" value="' + esc(p.caption || '') + '" placeholder="Подпись под фото" oninput="carouselPhotos[' + i + '].caption=this.value">' +
+      '</div>' +
+      '<div class="carousel-photo-actions">' +
+        '<button class="btn btn-outline btn-sm" onclick="moveCarouselPhoto(' + i + ',-1)" ' + (i === 0 ? 'disabled' : '') + '>↑</button>' +
+        '<button class="btn btn-outline btn-sm" onclick="moveCarouselPhoto(' + i + ',1)" ' + (i === carouselPhotos.length - 1 ? 'disabled' : '') + '>↓</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="removeCarouselPhoto(' + i + ')">×</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function addCarouselPhoto() {
+  carouselPhotos.push({ url: '', caption: '', file: null, preview: '' });
+  renderCarouselPhotosList();
+}
+
+function removeCarouselPhoto(i) {
+  carouselPhotos.splice(i, 1);
+  renderCarouselPhotosList();
+}
+
+function moveCarouselPhoto(i, dir) {
+  var j = i + dir;
+  if (j < 0 || j >= carouselPhotos.length) return;
+  var tmp = carouselPhotos[i];
+  carouselPhotos[i] = carouselPhotos[j];
+  carouselPhotos[j] = tmp;
+  renderCarouselPhotosList();
+}
+
+function setCarouselPhotoFile(i, input) {
+  if (!input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    carouselPhotos[i].file = input.files[0];
+    carouselPhotos[i].preview = e.target.result;
+    renderCarouselPhotosList();
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function uploadFileBlob(fileObj) {
+  return new Promise(function(resolve) {
+    if (!fileObj) { resolve(null); return; }
+    var form = new FormData();
+    form.append('photo', fileObj);
+    fetch('/api/admin/upload', { method: 'POST', body: form })
+      .then(function(r) { return r.json(); })
+      .then(function(d) { resolve(d.url); })
+      .catch(function() { resolve(null); });
+  });
+}
+
+function uploadAllCarouselPhotos() {
+  var promises = carouselPhotos.map(function(p) {
+    if (p.file) return uploadFileBlob(p.file).then(function(url) { return { url: url || p.url || '', caption: p.caption || '' }; });
+    return Promise.resolve({ url: p.url || '', caption: p.caption || '' });
+  });
+  return Promise.all(promises).then(function(results) {
+    return results.filter(function(r) { return r.url; });
+  });
+}
+
+function toggleCarouselSection() {
+  var sel = document.getElementById('mPageTemplate');
+  var group = document.getElementById('carouselPhotosGroup');
+  if (!sel || !group) return;
+  group.style.display = (sel.value === 'carousel') ? '' : 'none';
 }
 
 // ============ SECTIONS ============
@@ -113,7 +215,75 @@ function renderSidebar() {
   html += '<div class="sidebar-add" onclick="openAddSectionModal()">+ Добавить раздел</div>';
   html += '<div style="padding:1rem 1rem .5rem;color:#a09080;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em">Настройки</div>';
   html += '<div class="sidebar-item" onclick="openWelcomeSettings()"><span>Приветственное аудио</span></div>';
+  html += '<div class="sidebar-item" onclick="openEmblemVideoSettings()"><span>Видео эмблемы</span></div>';
   sidebar.innerHTML = html;
+}
+
+// ============ EMBLEM VIDEO SETTINGS ============
+function openEmblemVideoSettings() {
+  activeSection = null;
+  renderSidebar();
+  fetch('/api/emblem_video').then(function(r) { return r.json(); }).then(function(d) {
+    var currentUrl = d.url || '';
+    var main = document.getElementById('mainContent');
+    main.innerHTML =
+      '<div class="section-header"><h2>Видео эмблемы</h2></div>' +
+      '<p style="color:#a09080;margin-bottom:1.5rem;line-height:1.6">' +
+        'Видео, которое воспроизводится при нажатии на эмблему на главной странице сайта. ' +
+        'Если файл не загружен — нажатие на эмблему ничего не делает.' +
+      '</p>' +
+      '<div class="form-group">' +
+        '<label>Текущий файл' + helpIcon('Видео, которое сейчас открывается при клике по эмблеме.') + '</label>' +
+        (currentUrl ?
+          '<div style="display:flex;gap:1rem;align-items:flex-start;margin-bottom:.5rem;flex-wrap:wrap">' +
+            '<video controls src="' + esc(currentUrl) + '" style="max-width:360px;max-height:240px;border:2px solid rgba(201,168,76,.4);border-radius:4px"></video>' +
+            '<button class="btn btn-danger btn-sm" onclick="deleteEmblemVideo()">Удалить</button>' +
+          '</div>' +
+          '<div style="color:#706050;font-size:.75rem;word-break:break-all">' + esc(currentUrl) + '</div>'
+          : '<div style="color:#a09080;padding:.8rem;border:1px dashed #605040;border-radius:4px">Файл не загружен</div>'
+        ) +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>Загрузить новый файл' + helpIcon('Поддерживаются MP4, WebM, MOV, M4V, OGG. Максимальный размер — 200 МБ (зависит также от настроек хостинга).') + '</label>' +
+        '<input type="file" id="emblemVideoFile" accept="video/mp4,video/webm,video/quicktime,video/ogg,.mp4,.webm,.mov,.m4v,.ogg">' +
+      '</div>' +
+      '<div class="modal-actions" style="justify-content:flex-start">' +
+        '<button class="btn btn-primary" onclick="uploadEmblemVideo()">Загрузить</button>' +
+      '</div>' +
+      '<div id="emblemVideoStatus" style="margin-top:1rem"></div>';
+  });
+}
+
+function uploadEmblemVideo() {
+  var input = document.getElementById('emblemVideoFile');
+  var status = document.getElementById('emblemVideoStatus');
+  if (!input.files || !input.files[0]) {
+    status.innerHTML = '<div style="color:#e05040">Выберите файл</div>';
+    return;
+  }
+  var form = new FormData();
+  form.append('video', input.files[0]);
+  status.innerHTML = '<div style="color:#c9a84c">Загрузка...</div>';
+  fetch('/api/admin/emblem_video', { method: 'POST', body: form })
+    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+    .then(function(res) {
+      if (res.ok) {
+        status.innerHTML = '<div style="color:#60c060">Файл загружен</div>';
+        openEmblemVideoSettings();
+      } else {
+        status.innerHTML = '<div style="color:#e05040">Ошибка: ' + esc(res.data.error || 'неизвестная') + '</div>';
+      }
+    })
+    .catch(function() {
+      status.innerHTML = '<div style="color:#e05040">Ошибка сети</div>';
+    });
+}
+
+function deleteEmblemVideo() {
+  if (!confirm('Удалить видео эмблемы? Нажатие на эмблему перестанет открывать видео.')) return;
+  fetch('/api/admin/emblem_video', { method: 'DELETE' }).then(function() {
+    openEmblemVideoSettings();
+  });
 }
 
 // ============ WELCOME AUDIO SETTINGS ============
@@ -342,15 +512,17 @@ function deleteSection(id) {
 
 // ---- Add Page ----
 function openAddPageModal(sectionId) {
+  carouselPhotos = [];
   openModal(
     '<h3>Добавить страницу</h3>' +
     '<div class="form-group"><label>Заголовок страницы' + helpIcon('Основной заголовок, который будет отображаться вверху страницы на сайте.') + '</label><input id="mPageTitle"></div>' +
     '<div class="form-group"><label>Имя' + helpIcon('Имя для карточек героев и генералов. Отображается под фото в галерее.') + '</label><input id="mPageName"></div>' +
     '<div class="form-group"><label>Звание/ранг' + helpIcon('Воинское звание или должность. Отображается под именем в карточке.') + '</label><input id="mPageRank"></div>' +
-    '<div class="form-group"><label>Шаблон' + helpIcon('Стандартный — 1 фото слева и текст справа. 2 фото — два альбомных фото слева и текст справа. 1 фото книжное — вертикальное фото и текст.') + '</label><select id="mPageTemplate">' +
+    '<div class="form-group"><label>Шаблон' + helpIcon('Стандартный — 1 фото слева и текст справа. 2 фото — два альбомных фото слева и текст справа. 1 фото книжное — вертикальное фото и текст. Карусель — несколько фото слева с возможностью листать, под каждым фото подпись, текст справа.') + '</label><select id="mPageTemplate" onchange="toggleCarouselSection()">' +
       '<option value="default">Стандартный (1 фото + текст)</option>' +
       '<option value="two_landscape">2 фото альбомных + текст</option>' +
       '<option value="one_portrait">1 фото книжное + текст</option>' +
+      '<option value="carousel">Карусель фото с подписями + текст</option>' +
     '</select></div>' +
     '<div class="form-group"><label>Фото 1' + helpIcon('Загрузите файл или укажите путь к изображению. Это основное фото страницы.') + '</label>' +
       '<div class="photo-upload"><input type="file" id="mPageFile1" accept="image/*" onchange="previewUpload(this,\'mPagePhotoPreview1\')">' +
@@ -362,6 +534,11 @@ function openAddPageModal(sectionId) {
       '<img id="mPagePhotoPreview2" class="photo-preview" style="display:none"></div>' +
       '<input id="mPagePhoto2" placeholder="Путь к фото 2">' +
     '</div>' +
+    '<div class="form-group" id="carouselPhotosGroup" style="display:none">' +
+      '<label>Фото для карусели' + helpIcon('Несколько изображений, которые посетитель сможет листать на сайте. У каждого фото своя подпись, отображающаяся под фото.') + '</label>' +
+      '<div id="carouselPhotosList"></div>' +
+      '<button class="btn btn-outline btn-sm" onclick="addCarouselPhoto()">+ Добавить фото</button>' +
+    '</div>' +
     '<div class="form-group"><label>Текст (биография/описание)' + helpIcon('Основной текст страницы. Двойной перенос строки создаёт новый абзац, одиночный — перенос строки.') + '</label><textarea id="mPageBio" rows="8"></textarea></div>' +
     '<div class="form-group"><label>Порядок сортировки' + helpIcon('Определяет позицию страницы в разделе. Чем меньше число, тем раньше отображается.') + '</label><input id="mPageOrder" type="number" value="0"></div>' +
     '<div class="modal-actions">' +
@@ -369,6 +546,8 @@ function openAddPageModal(sectionId) {
       '<button class="btn btn-outline" onclick="closeModal()">Отмена</button>' +
     '</div>'
   );
+  renderCarouselPhotosList();
+  toggleCarouselSection();
 }
 
 function previewUpload(input, previewId) {
@@ -402,7 +581,8 @@ function saveNewPage(sectionId) {
   var file1 = document.getElementById('mPageFile1');
   var file2 = document.getElementById('mPageFile2');
 
-  Promise.all([uploadFile(file1), uploadFile(file2)]).then(function(urls) {
+  Promise.all([uploadFile(file1), uploadFile(file2), uploadAllCarouselPhotos()]).then(function(results) {
+    var urls = results;
     var data = {
       section_id: sectionId,
       title: document.getElementById('mPageTitle').value,
@@ -411,6 +591,7 @@ function saveNewPage(sectionId) {
       template: document.getElementById('mPageTemplate').value,
       photo: urls[0] || document.getElementById('mPagePhoto').value,
       photo2: urls[1] || document.getElementById('mPagePhoto2').value,
+      photos: JSON.stringify(urls[2] || []),
       bio: document.getElementById('mPageBio').value,
       sort_order: parseInt(document.getElementById('mPageOrder').value) || 0
     };
@@ -431,15 +612,20 @@ function openEditPageModal(pageId) {
     var p = allPages.find(function(x) { return x.id === pageId; });
     if (!p) return;
 
+    carouselPhotos = parsePhotos(p.photos).map(function(x) {
+      return { url: x.url || '', caption: x.caption || '', file: null, preview: x.url || '' };
+    });
+
     openModal(
       '<h3>Редактировать страницу</h3>' +
       '<div class="form-group"><label>Заголовок' + helpIcon('Основной заголовок страницы.') + '</label><input id="mPageTitle" value="' + esc(p.title) + '"></div>' +
       '<div class="form-group"><label>Имя' + helpIcon('Имя для карточки в галерее.') + '</label><input id="mPageName" value="' + esc(p.name) + '"></div>' +
       '<div class="form-group"><label>Звание' + helpIcon('Воинское звание или должность.') + '</label><input id="mPageRank" value="' + esc(p.rank) + '"></div>' +
-      '<div class="form-group"><label>Шаблон' + helpIcon('Определяет расположение фото и текста на странице.') + '</label><select id="mPageTemplate">' +
+      '<div class="form-group"><label>Шаблон' + helpIcon('Определяет расположение фото и текста на странице. Карусель — несколько фото слева с возможностью листать, под каждым фото подпись, текст справа.') + '</label><select id="mPageTemplate" onchange="toggleCarouselSection()">' +
         '<option value="default" ' + (p.template === 'default' ? 'selected' : '') + '>Стандартный</option>' +
         '<option value="two_landscape" ' + (p.template === 'two_landscape' ? 'selected' : '') + '>2 фото альбомных</option>' +
         '<option value="one_portrait" ' + (p.template === 'one_portrait' ? 'selected' : '') + '>1 фото книжное</option>' +
+        '<option value="carousel" ' + (p.template === 'carousel' ? 'selected' : '') + '>Карусель фото с подписями + текст</option>' +
       '</select></div>' +
       '<div class="form-group"><label>Фото 1' + helpIcon('Основное фото. Загрузите новый файл или измените путь.') + '</label>' +
         (p.photo ? '<img src="' + esc(p.photo) + '" style="max-width:100px;max-height:80px;display:block;margin-bottom:.5rem;border-radius:4px" onerror="this.style.display=\'none\'">' : '') +
@@ -453,6 +639,11 @@ function openEditPageModal(pageId) {
         '<img id="mPagePhotoPreview2" class="photo-preview" style="display:none"></div>' +
         '<input id="mPagePhoto2" value="' + esc(p.photo2 || '') + '" placeholder="Путь к фото 2">' +
       '</div>' +
+      '<div class="form-group" id="carouselPhotosGroup" style="display:none">' +
+        '<label>Фото для карусели' + helpIcon('Несколько изображений, которые посетитель сможет листать на сайте. У каждого фото своя подпись, отображающаяся под фото.') + '</label>' +
+        '<div id="carouselPhotosList"></div>' +
+        '<button class="btn btn-outline btn-sm" onclick="addCarouselPhoto()">+ Добавить фото</button>' +
+      '</div>' +
       '<div class="form-group"><label>Текст' + helpIcon('Основной текст. Двойной перенос строки — новый абзац, одиночный — перенос строки.') + '</label><textarea id="mPageBio" rows="10">' + esc(p.bio) + '</textarea></div>' +
       '<div class="form-group"><label>Порядок' + helpIcon('Позиция страницы в разделе.') + '</label><input id="mPageOrder" type="number" value="' + p.sort_order + '"></div>' +
       '<div class="modal-actions">' +
@@ -460,6 +651,8 @@ function openEditPageModal(pageId) {
         '<button class="btn btn-outline" onclick="closeModal()">Отмена</button>' +
       '</div>'
     );
+    renderCarouselPhotosList();
+    toggleCarouselSection();
   });
 }
 
@@ -467,7 +660,8 @@ function saveEditPage(pageId, sectionId) {
   var file1 = document.getElementById('mPageFile1');
   var file2 = document.getElementById('mPageFile2');
 
-  Promise.all([uploadFile(file1), uploadFile(file2)]).then(function(urls) {
+  Promise.all([uploadFile(file1), uploadFile(file2), uploadAllCarouselPhotos()]).then(function(results) {
+    var urls = results;
     var data = {
       title: document.getElementById('mPageTitle').value,
       name: document.getElementById('mPageName').value,
@@ -475,6 +669,7 @@ function saveEditPage(pageId, sectionId) {
       template: document.getElementById('mPageTemplate').value,
       photo: urls[0] || document.getElementById('mPagePhoto').value,
       photo2: urls[1] || document.getElementById('mPagePhoto2').value,
+      photos: JSON.stringify(urls[2] || []),
       bio: document.getElementById('mPageBio').value,
       sort_order: parseInt(document.getElementById('mPageOrder').value) || 0
     };

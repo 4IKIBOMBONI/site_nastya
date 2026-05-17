@@ -160,22 +160,25 @@ app.get('/api/admin/pages', requireAdmin, (req, res) => {
 });
 
 app.post('/api/admin/pages', requireAdmin, (req, res) => {
-  const { section_id, title, name, rank, bio, photo, photo2, template, sort_order } = req.body;
+  const { section_id, title, name, rank, bio, photo, photo2, photos, template, sort_order } = req.body;
   if (!section_id) return res.status(400).json({ error: 'section_id required' });
+  const photosStr = photos == null ? '' : (typeof photos === 'string' ? photos : JSON.stringify(photos));
   const result = db.prepare(
-    'INSERT INTO pages (section_id, title, name, rank, bio, photo, photo2, template, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(section_id, title || '', name || '', rank || '', bio || '', photo || '', photo2 || '', template || 'default', sort_order || 0);
+    'INSERT INTO pages (section_id, title, name, rank, bio, photo, photo2, photos, template, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(section_id, title || '', name || '', rank || '', bio || '', photo || '', photo2 || '', photosStr, template || 'default', sort_order || 0);
   res.json({ id: result.lastInsertRowid });
 });
 
 app.put('/api/admin/pages/:id', requireAdmin, (req, res) => {
-  const fields = ['title', 'name', 'rank', 'bio', 'photo', 'photo2', 'template', 'sort_order', 'section_id'];
+  const fields = ['title', 'name', 'rank', 'bio', 'photo', 'photo2', 'photos', 'template', 'sort_order', 'section_id'];
   const updates = [];
   const params = [];
   for (const f of fields) {
     if (req.body[f] !== undefined) {
       updates.push(`${f} = ?`);
-      params.push(req.body[f]);
+      let val = req.body[f];
+      if (f === 'photos' && val != null && typeof val !== 'string') val = JSON.stringify(val);
+      params.push(val == null ? '' : val);
     }
   }
   if (updates.length === 0) return res.status(400).json({ error: 'Nothing to update' });
@@ -255,6 +258,47 @@ app.delete('/api/admin/welcome_audio', requireAdmin, (req, res) => {
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
   db.prepare('DELETE FROM settings WHERE key = ?').run('welcome_audio');
+  res.json({ success: true });
+});
+
+// ============ EMBLEM VIDEO ============
+
+const videoStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, 'emblem_video_' + Date.now() + ext);
+  }
+});
+const videoUpload = multer({
+  storage: videoStorage,
+  limits: { fileSize: 200 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (['.mp4', '.webm', '.mov', '.m4v', '.ogg'].includes(ext)) cb(null, true);
+    else cb(new Error('Только MP4, WebM, MOV, M4V, OGG'));
+  }
+});
+
+app.get('/api/emblem_video', (req, res) => {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('emblem_video');
+  res.json({ url: row ? row.value : '' });
+});
+
+app.post('/api/admin/emblem_video', requireAdmin, videoUpload.single('video'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
+  const url = 'uploads/' + req.file.filename;
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run('emblem_video', url);
+  res.json({ url });
+});
+
+app.delete('/api/admin/emblem_video', requireAdmin, (req, res) => {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('emblem_video');
+  if (row && row.value) {
+    const filePath = path.join(__dirname, row.value);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+  db.prepare('DELETE FROM settings WHERE key = ?').run('emblem_video');
   res.json({ success: true });
 });
 
