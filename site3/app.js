@@ -348,6 +348,43 @@ function renderBookSection(section) {
   updateBookPage();
 }
 
+function parsePagePhotos(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try {
+    var parsed = JSON.parse(val);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) { return []; }
+}
+
+var currentCarouselIdx = 0;
+
+function carouselNav(dir) {
+  if (!currentBook) return;
+  var page = currentBook.pages[currentPage];
+  var photos = parsePagePhotos(page.photos);
+  if (photos.length === 0) return;
+  currentCarouselIdx = (currentCarouselIdx + dir + photos.length) % photos.length;
+  renderCarouselSlot();
+}
+
+function renderCarouselSlot() {
+  if (!currentBook) return;
+  var page = currentBook.pages[currentPage];
+  var photos = parsePagePhotos(page.photos);
+  var slot = document.getElementById('carouselSlot');
+  if (!slot || photos.length === 0) return;
+  var p = photos[currentCarouselIdx];
+  slot.innerHTML =
+    '<div class="carousel-stage">' +
+      '<button class="carousel-arrow carousel-arrow-left" onclick="carouselNav(-1)" ' + (photos.length < 2 ? 'disabled' : '') + '>◄</button>' +
+      '<img src="' + p.url + '" alt="" onclick="zoomPhoto(this.src)" style="cursor:zoom-in" onerror="this.style.display=\'none\'">' +
+      '<button class="carousel-arrow carousel-arrow-right" onclick="carouselNav(1)" ' + (photos.length < 2 ? 'disabled' : '') + '>►</button>' +
+    '</div>' +
+    (p.caption ? '<div class="carousel-caption">' + p.caption + '</div>' : '') +
+    '<div class="carousel-counter">' + (currentCarouselIdx + 1) + ' / ' + photos.length + '</div>';
+}
+
 function updateBookPage() {
   if (!currentBook) return;
   var pages = currentBook.pages;
@@ -358,10 +395,24 @@ function updateBookPage() {
   // Determine template
   var template = page.template || 'default';
   var leftContent = '';
-  if (template === 'two_landscape' && page.photo2) {
+  var leftClass = 'book-left';
+  if (template === 'carousel') {
+    currentCarouselIdx = 0;
+    var photos = parsePagePhotos(page.photos);
+    if (photos.length === 0 && page.photo) {
+      photos = [{ url: page.photo, caption: '' }];
+    }
+    if (photos.length === 0) {
+      leftContent = '<div style="padding:2vh;color:#c9a84c;text-align:center">Фото будет добавлено</div>';
+    } else {
+      leftContent = '<div class="carousel-box" id="carouselSlot"></div>';
+    }
+    leftClass += ' book-left-carousel';
+  } else if (template === 'two_landscape' && page.photo2) {
     leftContent =
       '<img src="' + page.photo + '" alt="" onclick="zoomPhoto(this.src)" style="cursor:zoom-in;max-width:90%;max-height:32vh;margin-bottom:1vh" onerror="this.style.display=\'none\'">' +
       '<img src="' + page.photo2 + '" alt="" onclick="zoomPhoto(this.src)" style="cursor:zoom-in;max-width:90%;max-height:32vh" onerror="this.style.display=\'none\'">';
+    leftClass += ' book-left-stacked';
   } else {
     leftContent = '<img src="' + page.photo + '" alt="' + (page.title || '') + '" onclick="zoomPhoto(this.src)" style="cursor:zoom-in" onerror="this.parentElement.innerHTML=\'<div style=padding:2vh;color:#c9a84c;text-align:center>Фото будет добавлено</div>\'">';
   }
@@ -375,7 +426,7 @@ function updateBookPage() {
         '<button class="back-btn" onclick="closePage(\'' + slug + '\')">✕</button>' +
       '</div></div>' +
     '<div class="book-body">' +
-      '<div class="book-left' + (template === 'two_landscape' ? ' book-left-stacked' : '') + '">' + leftContent + '</div>' +
+      '<div class="' + leftClass + '">' + leftContent + '</div>' +
       '<div class="book-right">' +
         (page.title ? '<div class="book-name">' + page.title + '</div>' : '') +
         '<div class="book-bio">' + bioHtml + '</div>' +
@@ -384,6 +435,8 @@ function updateBookPage() {
       '<button class="book-nav-btn" onclick="bookNav(-1)" ' + (currentPage === 0 ? 'disabled' : '') + '>◄ Предыдущий</button>' +
       '<button class="book-nav-btn" onclick="bookNav(1)" ' + (currentPage === pages.length - 1 ? 'disabled' : '') + '>Следующий ►</button>' +
     '</div></div>';
+
+  if (template === 'carousel') renderCarouselSlot();
 }
 
 function bookNav(dir) {

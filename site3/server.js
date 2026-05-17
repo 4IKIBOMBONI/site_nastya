@@ -160,22 +160,25 @@ app.get('/api/admin/pages', requireAdmin, (req, res) => {
 });
 
 app.post('/api/admin/pages', requireAdmin, (req, res) => {
-  const { section_id, title, name, rank, bio, photo, photo2, template, sort_order } = req.body;
+  const { section_id, title, name, rank, bio, photo, photo2, photos, template, sort_order } = req.body;
   if (!section_id) return res.status(400).json({ error: 'section_id required' });
+  const photosStr = photos == null ? '' : (typeof photos === 'string' ? photos : JSON.stringify(photos));
   const result = db.prepare(
-    'INSERT INTO pages (section_id, title, name, rank, bio, photo, photo2, template, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(section_id, title || '', name || '', rank || '', bio || '', photo || '', photo2 || '', template || 'default', sort_order || 0);
+    'INSERT INTO pages (section_id, title, name, rank, bio, photo, photo2, photos, template, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(section_id, title || '', name || '', rank || '', bio || '', photo || '', photo2 || '', photosStr, template || 'default', sort_order || 0);
   res.json({ id: result.lastInsertRowid });
 });
 
 app.put('/api/admin/pages/:id', requireAdmin, (req, res) => {
-  const fields = ['title', 'name', 'rank', 'bio', 'photo', 'photo2', 'template', 'sort_order', 'section_id'];
+  const fields = ['title', 'name', 'rank', 'bio', 'photo', 'photo2', 'photos', 'template', 'sort_order', 'section_id'];
   const updates = [];
   const params = [];
   for (const f of fields) {
     if (req.body[f] !== undefined) {
       updates.push(`${f} = ?`);
-      params.push(req.body[f]);
+      let val = req.body[f];
+      if (f === 'photos' && val != null && typeof val !== 'string') val = JSON.stringify(val);
+      params.push(val == null ? '' : val);
     }
   }
   if (updates.length === 0) return res.status(400).json({ error: 'Nothing to update' });

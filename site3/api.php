@@ -32,6 +32,7 @@ $db->exec("
     bio TEXT DEFAULT '',
     photo TEXT DEFAULT '',
     photo2 TEXT DEFAULT '',
+    photos TEXT DEFAULT '',
     template TEXT DEFAULT 'default',
     sort_order INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -41,6 +42,13 @@ $db->exec("
     value TEXT
   );
 ");
+
+// Migration: add photos column for existing databases
+try {
+    $db->query("SELECT photos FROM pages LIMIT 1");
+} catch (Exception $e) {
+    $db->exec("ALTER TABLE pages ADD COLUMN photos TEXT DEFAULT ''");
+}
 
 $stmt = $db->prepare('SELECT value FROM settings WHERE key = ?');
 $stmt->execute(['admin_password']);
@@ -244,7 +252,9 @@ if ($uri === '/api/admin/pages' && $method === 'POST') {
     $body = jsonBody();
     $sectionId = $body['section_id'] ?? null;
     if (!$sectionId) respond(['error' => 'section_id required'], 400);
-    $stmt = $db->prepare('INSERT INTO pages (section_id, title, name, rank, bio, photo, photo2, template, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $photosVal = $body['photos'] ?? '';
+    if (is_array($photosVal)) $photosVal = json_encode($photosVal, JSON_UNESCAPED_UNICODE);
+    $stmt = $db->prepare('INSERT INTO pages (section_id, title, name, rank, bio, photo, photo2, photos, template, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $stmt->execute([
         $sectionId,
         $body['title'] ?? '',
@@ -253,6 +263,7 @@ if ($uri === '/api/admin/pages' && $method === 'POST') {
         $body['bio'] ?? '',
         $body['photo'] ?? '',
         $body['photo2'] ?? '',
+        $photosVal,
         $body['template'] ?? 'default',
         $body['sort_order'] ?? 0
     ]);
@@ -274,13 +285,15 @@ if (preg_match('#^/api/admin/pages/(\d+)$#', $uri, $m) && $method === 'PUT') {
     requireAdmin();
     $id = $m[1];
     $body = jsonBody();
-    $fields = ['title', 'name', 'rank', 'bio', 'photo', 'photo2', 'template', 'sort_order', 'section_id'];
+    $fields = ['title', 'name', 'rank', 'bio', 'photo', 'photo2', 'photos', 'template', 'sort_order', 'section_id'];
     $updates = [];
     $params = [];
     foreach ($fields as $f) {
         if (isset($body[$f])) {
             $updates[] = "$f = ?";
-            $params[] = $body[$f];
+            $val = $body[$f];
+            if ($f === 'photos' && is_array($val)) $val = json_encode($val, JSON_UNESCAPED_UNICODE);
+            $params[] = $val;
         }
     }
     if (empty($updates)) respond(['error' => 'Nothing to update'], 400);
