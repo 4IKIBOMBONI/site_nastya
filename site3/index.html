@@ -33,6 +33,14 @@
   <button class="zoom-close" onclick="closeZoom()">✕</button>
 </div>
 
+<!-- Emblem video modal -->
+<div class="emblem-video-overlay" id="emblemVideoOverlay" onclick="if(event.target===this)closeEmblemVideo()">
+  <div class="emblem-video-box">
+    <video id="emblemVideoPlayer" controls playsinline></video>
+    <button class="emblem-video-close" onclick="closeEmblemVideo()" title="Закрыть">✕</button>
+  </div>
+</div>
+
 <!-- Welcome overlay (video + audio) -->
 <div class="welcome-overlay" id="welcomeOverlay">
   <div class="welcome-content">

@@ -215,7 +215,75 @@ function renderSidebar() {
   html += '<div class="sidebar-add" onclick="openAddSectionModal()">+ Добавить раздел</div>';
   html += '<div style="padding:1rem 1rem .5rem;color:#a09080;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em">Настройки</div>';
   html += '<div class="sidebar-item" onclick="openWelcomeSettings()"><span>Приветственное аудио</span></div>';
+  html += '<div class="sidebar-item" onclick="openEmblemVideoSettings()"><span>Видео эмблемы</span></div>';
   sidebar.innerHTML = html;
+}
+
+// ============ EMBLEM VIDEO SETTINGS ============
+function openEmblemVideoSettings() {
+  activeSection = null;
+  renderSidebar();
+  fetch('/api/emblem_video').then(function(r) { return r.json(); }).then(function(d) {
+    var currentUrl = d.url || '';
+    var main = document.getElementById('mainContent');
+    main.innerHTML =
+      '<div class="section-header"><h2>Видео эмблемы</h2></div>' +
+      '<p style="color:#a09080;margin-bottom:1.5rem;line-height:1.6">' +
+        'Видео, которое воспроизводится при нажатии на эмблему на главной странице сайта. ' +
+        'Если файл не загружен — нажатие на эмблему ничего не делает.' +
+      '</p>' +
+      '<div class="form-group">' +
+        '<label>Текущий файл' + helpIcon('Видео, которое сейчас открывается при клике по эмблеме.') + '</label>' +
+        (currentUrl ?
+          '<div style="display:flex;gap:1rem;align-items:flex-start;margin-bottom:.5rem;flex-wrap:wrap">' +
+            '<video controls src="' + esc(currentUrl) + '" style="max-width:360px;max-height:240px;border:2px solid rgba(201,168,76,.4);border-radius:4px"></video>' +
+            '<button class="btn btn-danger btn-sm" onclick="deleteEmblemVideo()">Удалить</button>' +
+          '</div>' +
+          '<div style="color:#706050;font-size:.75rem;word-break:break-all">' + esc(currentUrl) + '</div>'
+          : '<div style="color:#a09080;padding:.8rem;border:1px dashed #605040;border-radius:4px">Файл не загружен</div>'
+        ) +
+      '</div>' +
+      '<div class="form-group">' +
+        '<label>Загрузить новый файл' + helpIcon('Поддерживаются MP4, WebM, MOV, M4V, OGG. Максимальный размер — 200 МБ (зависит также от настроек хостинга).') + '</label>' +
+        '<input type="file" id="emblemVideoFile" accept="video/mp4,video/webm,video/quicktime,video/ogg,.mp4,.webm,.mov,.m4v,.ogg">' +
+      '</div>' +
+      '<div class="modal-actions" style="justify-content:flex-start">' +
+        '<button class="btn btn-primary" onclick="uploadEmblemVideo()">Загрузить</button>' +
+      '</div>' +
+      '<div id="emblemVideoStatus" style="margin-top:1rem"></div>';
+  });
+}
+
+function uploadEmblemVideo() {
+  var input = document.getElementById('emblemVideoFile');
+  var status = document.getElementById('emblemVideoStatus');
+  if (!input.files || !input.files[0]) {
+    status.innerHTML = '<div style="color:#e05040">Выберите файл</div>';
+    return;
+  }
+  var form = new FormData();
+  form.append('video', input.files[0]);
+  status.innerHTML = '<div style="color:#c9a84c">Загрузка...</div>';
+  fetch('/api/admin/emblem_video', { method: 'POST', body: form })
+    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+    .then(function(res) {
+      if (res.ok) {
+        status.innerHTML = '<div style="color:#60c060">Файл загружен</div>';
+        openEmblemVideoSettings();
+      } else {
+        status.innerHTML = '<div style="color:#e05040">Ошибка: ' + esc(res.data.error || 'неизвестная') + '</div>';
+      }
+    })
+    .catch(function() {
+      status.innerHTML = '<div style="color:#e05040">Ошибка сети</div>';
+    });
+}
+
+function deleteEmblemVideo() {
+  if (!confirm('Удалить видео эмблемы? Нажатие на эмблему перестанет открывать видео.')) return;
+  fetch('/api/admin/emblem_video', { method: 'DELETE' }).then(function() {
+    openEmblemVideoSettings();
+  });
 }
 
 // ============ WELCOME AUDIO SETTINGS ============

@@ -357,6 +357,46 @@ if ($uri === '/api/admin/welcome_audio' && $method === 'DELETE') {
     respond(['success' => true]);
 }
 
+// ---- Emblem video ----
+if ($uri === '/api/emblem_video' && $method === 'GET') {
+    $stmt = $db->prepare('SELECT value FROM settings WHERE key = ?');
+    $stmt->execute(['emblem_video']);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    respond(['url' => $row ? $row['value'] : '']);
+}
+
+if ($uri === '/api/admin/emblem_video' && $method === 'POST') {
+    requireAdmin();
+    if (empty($_FILES['video'])) respond(['error' => 'Файл не загружен'], 400);
+    $file = $_FILES['video'];
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if (!in_array($ext, ['mp4', 'webm', 'mov', 'm4v', 'ogg'])) {
+        respond(['error' => 'Только MP4, WebM, MOV, M4V, OGG'], 400);
+    }
+    $newName = 'emblem_video_' . time() . '.' . $ext;
+    $dest = __DIR__ . '/uploads/' . $newName;
+    if (move_uploaded_file($file['tmp_name'], $dest)) {
+        $url = 'uploads/' . $newName;
+        $db->prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')->execute(['emblem_video', $url]);
+        respond(['url' => $url]);
+    } else {
+        respond(['error' => 'Ошибка загрузки'], 500);
+    }
+}
+
+if ($uri === '/api/admin/emblem_video' && $method === 'DELETE') {
+    requireAdmin();
+    $stmt = $db->prepare('SELECT value FROM settings WHERE key = ?');
+    $stmt->execute(['emblem_video']);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row && $row['value']) {
+        $filePath = __DIR__ . '/' . $row['value'];
+        if (file_exists($filePath)) @unlink($filePath);
+    }
+    $db->prepare('DELETE FROM settings WHERE key = ?')->execute(['emblem_video']);
+    respond(['success' => true]);
+}
+
 // Not found
 http_response_code(404);
 echo json_encode(['error' => 'Not found']);

@@ -5,6 +5,7 @@ var currentPage = 0;
 var currentGalleryType = null;
 var currentGalleryPages = [];
 var currentHeroIdx = 0;
+var emblemVideoUrl = '';
 
 // ============ INIT ============
 window.addEventListener('load', function() {
@@ -13,9 +14,37 @@ window.addEventListener('load', function() {
       document.getElementById('loader').classList.add('hidden');
       document.getElementById('mainPage').classList.add('visible');
       initWelcome();
+      loadEmblemVideo();
     }, 1500);
   });
 });
+
+function loadEmblemVideo() {
+  fetch('api/emblem_video').then(function(r) { return r.json(); }).then(function(d) {
+    emblemVideoUrl = (d && d.url) ? d.url : '';
+  }).catch(function() { emblemVideoUrl = ''; });
+}
+
+function openEmblemVideo() {
+  if (!emblemVideoUrl) return;
+  var overlay = document.getElementById('emblemVideoOverlay');
+  var player = document.getElementById('emblemVideoPlayer');
+  if (!overlay || !player) return;
+  if (player.src !== location.origin + '/' + emblemVideoUrl.replace(/^\//, '')) {
+    player.src = emblemVideoUrl;
+  }
+  overlay.classList.add('active');
+  player.currentTime = 0;
+  var p = player.play();
+  if (p && p.catch) p.catch(function(){});
+}
+
+function closeEmblemVideo() {
+  var overlay = document.getElementById('emblemVideoOverlay');
+  var player = document.getElementById('emblemVideoPlayer');
+  if (overlay) overlay.classList.remove('active');
+  if (player) { player.pause(); }
+}
 
 // ============ WELCOME OVERLAY ============
 function initWelcome() {
@@ -120,7 +149,7 @@ function renderMainPage() {
   content.innerHTML =
     '<div class="left-col">' + left.join('') + '</div>' +
     '<div class="center-col"><div class="emblem-area">' +
-      '<img src="images/emblem.png" alt="Эмблема СВКИ" class="emblem">' +
+      '<img src="images/emblem.png" alt="Эмблема СВКИ" class="emblem emblem-clickable" onclick="openEmblemVideo()">' +
     '</div></div>' +
     '<div class="right-col">' + right.join('') + '</div>';
 }
@@ -474,6 +503,12 @@ function closeZoom() {
 // ============ KEYBOARD NAVIGATION ============
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
+    // Close emblem video first
+    var emblemOv = document.getElementById('emblemVideoOverlay');
+    if (emblemOv && emblemOv.classList.contains('active')) {
+      closeEmblemVideo();
+      return;
+    }
     // Close zoom first
     if (document.getElementById('zoomOverlay').classList.contains('active')) {
       closeZoom();
