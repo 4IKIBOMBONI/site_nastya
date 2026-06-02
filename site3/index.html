@@ -43,6 +43,33 @@
   </div>
 </div>
 
+<!-- Guide Chat -->
+<div class="guide-btn" id="guideBtn" onclick="toggleChat()" style="display:none">
+  <span class="guide-btn-icon">💬</span>
+  <span class="guide-btn-label">ГИД</span>
+</div>
+
+<div class="chat-widget" id="chatWidget">
+  <div class="chat-header">
+    <span class="chat-header-title">Виртуальный гид</span>
+    <div class="chat-header-actions">
+      <button class="chat-voice-btn" id="chatVoiceToggle" onclick="toggleChatVoice()" title="Звук выключен">🔇</button>
+      <button class="chat-close-btn" onclick="toggleChat()">✕</button>
+    </div>
+  </div>
+  <div class="chat-avatar-area">
+    <video class="chat-avatar-vid" id="chatAvatarIdle" src="images/guide_idle.mp4" muted loop playsinline preload="auto"></video>
+    <video class="chat-avatar-vid" id="chatAvatarTalking" src="images/guide_talking.mp4" muted loop playsinline preload="auto" style="display:none"></video>
+  </div>
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="chat-quick" id="chatQuick"></div>
+  <div class="chat-input-area">
+    <input type="text" id="chatInput" placeholder="Задайте вопрос..." onkeydown="chatInputKey(event)" autocomplete="off">
+    <button id="chatSendBtn" onclick="sendChat()">➤</button>
+  </div>
+</div>
+
 <script src="app.js"></script>
+<script src="chat.js"></script>
 </body>
 </html>

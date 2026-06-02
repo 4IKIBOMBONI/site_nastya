@@ -113,6 +113,7 @@ function renderSidebar() {
   html += '<div class="sidebar-add" onclick="openAddSectionModal()">+ Добавить раздел</div>';
   html += '<div style="padding:1rem 1rem .5rem;color:#a09080;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em">Настройки</div>';
   html += '<div class="sidebar-item" onclick="openWelcomeSettings()"><span>Приветственное аудио</span></div>';
+  html += '<div class="sidebar-item" onclick="openChatSettings()"><span>Чат-гид</span></div>';
   sidebar.innerHTML = html;
 }
 
@@ -493,4 +494,119 @@ function deletePage(pageId, sectionId) {
   fetch('/api/admin/pages/' + pageId, { method: 'DELETE' }).then(function() {
     selectSection(sectionId);
   });
+}
+
+// ============ CHAT GUIDE SETTINGS ============
+function openChatSettings() {
+  activeSection = null;
+  renderSidebar();
+  fetch('/api/admin/chat_settings').then(function(r) { return r.json(); }).then(function(d) {
+    var quickStr = d.quick_buttons || '[]';
+    var main = document.getElementById('mainContent');
+    main.innerHTML =
+      '<div class="section-header"><h2>Чат-гид</h2></div>' +
+      '<p style="color:#a09080;margin-bottom:1.5rem;line-height:1.6">' +
+        'Настройки виртуального гида. API-ключи хранятся в файле <code>chat_config.json</code> на сервере (не в БД).' +
+      '</p>' +
+
+      '<div class="form-group">' +
+        '<label>Приветственное сообщение' + helpIcon('Текст, который гид говорит при открытии чата.') + '</label>' +
+        '<textarea id="chatGreeting" rows="3" style="width:100%">' + esc(d.greeting) + '</textarea>' +
+      '</div>' +
+
+      '<div class="form-group">' +
+        '<label>Системный промпт' + helpIcon('Инструкции для нейросети. Определяет поведение гида, стиль ответов и ограничения. Данные музея подставляются автоматически.') + '</label>' +
+        '<textarea id="chatSystemPrompt" rows="6" style="width:100%">' + esc(d.system_prompt) + '</textarea>' +
+        '<div style="color:#706050;font-size:.7rem;margin-top:.3rem">Оставьте пустым для промпта по умолчанию</div>' +
+      '</div>' +
+
+      '<div class="form-group">' +
+        '<label>Быстрые кнопки (JSON)' + helpIcon('Массив кнопок. Формат: [{"label":"Текст кнопки","prompt":"Текст запроса"}]. Оставьте пустым для кнопок по умолчанию.') + '</label>' +
+        '<textarea id="chatQuickButtons" rows="4" style="width:100%;font-size:.8rem;font-family:monospace">' + esc(quickStr) + '</textarea>' +
+      '</div>' +
+
+      '<div class="modal-actions" style="justify-content:flex-start;margin-bottom:2rem">' +
+        '<button class="btn btn-primary" onclick="saveChatSettings()">Сохранить настройки</button>' +
+      '</div>' +
+      '<div id="chatSettingsStatus" style="margin-bottom:2rem"></div>' +
+
+      '<hr style="border-color:rgba(201,168,76,.2);margin:1.5rem 0">' +
+
+      '<h3 style="color:#f0e0b0;margin-bottom:1rem">Видео аватара</h3>' +
+      '<p style="color:#a09080;margin-bottom:1rem;line-height:1.6;font-size:.85rem">' +
+        'Рекомендуемый формат: <b>MP4 (H.264)</b>, квадратное видео 300×300 или 400×400px, 3-5 секунд цикл, без звука. ' +
+        'Первый и последний кадр должны совпадать для бесшовного цикла.' +
+      '</p>' +
+
+      '<div style="display:flex;gap:2rem;flex-wrap:wrap">' +
+        '<div class="form-group" style="flex:1;min-width:200px">' +
+          '<label>Ожидание (idle)' + helpIcon('Видео гида в спокойном состоянии. Зацикленное.') + '</label>' +
+          '<div style="margin-bottom:.5rem;color:#706050;font-size:.75rem;word-break:break-all">' + esc(d.idle_video) + '</div>' +
+          '<input type="file" id="chatIdleFile" accept="video/mp4,video/webm,image/gif,.mp4,.webm,.gif">' +
+          '<button class="btn btn-outline btn-sm" style="margin-top:.5rem" onclick="uploadChatVideo(\'idle\')">Загрузить idle</button>' +
+        '</div>' +
+        '<div class="form-group" style="flex:1;min-width:200px">' +
+          '<label>Говорит (talking)' + helpIcon('Видео гида когда он отвечает. Зацикленное, рот двигается.') + '</label>' +
+          '<div style="margin-bottom:.5rem;color:#706050;font-size:.75rem;word-break:break-all">' + esc(d.talking_video) + '</div>' +
+          '<input type="file" id="chatTalkingFile" accept="video/mp4,video/webm,image/gif,.mp4,.webm,.gif">' +
+          '<button class="btn btn-outline btn-sm" style="margin-top:.5rem" onclick="uploadChatVideo(\'talking\')">Загрузить talking</button>' +
+        '</div>' +
+      '</div>' +
+      '<div id="chatVideoStatus" style="margin-top:1rem"></div>';
+  });
+}
+
+function saveChatSettings() {
+  var status = document.getElementById('chatSettingsStatus');
+  var quickRaw = document.getElementById('chatQuickButtons').value.trim();
+  if (quickRaw) {
+    try { JSON.parse(quickRaw); } catch(e) {
+      status.innerHTML = '<div style="color:#e05040">Ошибка в JSON быстрых кнопок: ' + esc(e.message) + '</div>';
+      return;
+    }
+  }
+
+  var data = {
+    greeting: document.getElementById('chatGreeting').value,
+    system_prompt: document.getElementById('chatSystemPrompt').value,
+    quick_buttons: quickRaw || '[]'
+  };
+
+  status.innerHTML = '<div style="color:#c9a84c">Сохранение...</div>';
+  fetch('/api/admin/chat_settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.success) status.innerHTML = '<div style="color:#60c060">Сохранено</div>';
+    else status.innerHTML = '<div style="color:#e05040">Ошибка</div>';
+  }).catch(function() {
+    status.innerHTML = '<div style="color:#e05040">Ошибка сети</div>';
+  });
+}
+
+function uploadChatVideo(type) {
+  var fileId = type === 'idle' ? 'chatIdleFile' : 'chatTalkingFile';
+  var input = document.getElementById(fileId);
+  var status = document.getElementById('chatVideoStatus');
+  if (!input.files || !input.files[0]) {
+    status.innerHTML = '<div style="color:#e05040">Выберите файл</div>';
+    return;
+  }
+  var form = new FormData();
+  form.append('video', input.files[0]);
+  status.innerHTML = '<div style="color:#c9a84c">Загрузка ' + type + '...</div>';
+  fetch('/api/admin/chat_video/' + type, { method: 'POST', body: form })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.url) {
+        status.innerHTML = '<div style="color:#60c060">' + esc(type) + ' загружен: ' + esc(d.url) + '</div>';
+        setTimeout(function() { openChatSettings(); }, 1500);
+      } else {
+        status.innerHTML = '<div style="color:#e05040">Ошибка: ' + esc(d.error || 'неизвестная') + '</div>';
+      }
+    })
+    .catch(function() {
+      status.innerHTML = '<div style="color:#e05040">Ошибка сети</div>';
+    });
 }

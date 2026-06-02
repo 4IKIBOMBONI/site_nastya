@@ -13,6 +13,7 @@ window.addEventListener('load', function() {
       document.getElementById('loader').classList.add('hidden');
       document.getElementById('mainPage').classList.add('visible');
       initWelcome();
+      if (typeof initChat === 'function') initChat();
     }, 1500);
   });
 });

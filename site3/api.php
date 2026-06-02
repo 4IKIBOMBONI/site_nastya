@@ -344,6 +344,218 @@ if ($uri === '/api/admin/welcome_audio' && $method === 'DELETE') {
     respond(['success' => true]);
 }
 
+// ============ CHAT GUIDE ============
+
+function getSetting($db, $key, $fallback = '') {
+    $stmt = $db->prepare('SELECT value FROM settings WHERE key = ?');
+    $stmt->execute([$key]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ? $row['value'] : $fallback;
+}
+
+function upsertSetting($db, $key, $value) {
+    $db->prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')->execute([$key, $value]);
+}
+
+function buildMuseumContext($db) {
+    $sections = $db->query('SELECT * FROM sections ORDER BY sort_order')->fetchAll(PDO::FETCH_ASSOC);
+    $pages = $db->query('SELECT p.*, s.title as section_title, s.slug as section_slug FROM pages p JOIN sections s ON p.section_id = s.id ORDER BY s.sort_order, p.sort_order')->fetchAll(PDO::FETCH_ASSOC);
+
+    $ctx = "РАЗДЕЛЫ МУЗЕЯ:\n";
+    foreach ($sections as $s) {
+        $ctx .= '- ' . $s['title'] . ' (' . $s['type'] . ")\n";
+    }
+    $ctx .= "\nСОДЕРЖИМОЕ:\n";
+    foreach ($pages as $p) {
+        $ctx .= "\n[" . $p['section_title'] . '] ';
+        if ($p['name']) $ctx .= $p['name'];
+        elseif ($p['title']) $ctx .= $p['title'];
+        if ($p['rank']) $ctx .= ' — ' . $p['rank'];
+        if ($p['photo']) $ctx .= ' | фото: ' . $p['photo'];
+        if ($p['bio']) {
+            $shortBio = mb_strlen($p['bio']) > 600 ? mb_substr($p['bio'], 0, 600) . '...' : $p['bio'];
+            $ctx .= "\n" . $shortBio;
+        }
+        $ctx .= "\n";
+    }
+    return $ctx;
+}
+
+if ($uri === '/api/chat/settings' && $method === 'GET') {
+    $greeting = getSetting($db, 'chat_greeting', 'Здравствуйте! Я виртуальный гид музея СВКИ. Задайте мне вопрос о музее, героях или истории института.');
+    $quickRaw = getSetting($db, 'chat_quick_buttons', '[]');
+    $quickButtons = json_decode($quickRaw, true) ?: [];
+    respond([
+        'greeting' => $greeting,
+        'quick_buttons' => $quickButtons,
+        'idle_video' => getSetting($db, 'chat_idle_video', 'images/guide_idle.mp4'),
+        'talking_video' => getSetting($db, 'chat_talking_video', 'images/guide_talking.mp4')
+    ]);
+}
+
+if ($uri === '/api/chat' && $method === 'POST') {
+    $body = jsonBody();
+    $message = $body['message'] ?? '';
+    if (!$message) respond(['error' => 'Сообщение не указано'], 400);
+
+    $configPath = __DIR__ . '/chat_config.json';
+    $config = [];
+    if (file_exists($configPath)) {
+        $config = json_decode(file_get_contents($configPath), true) ?: [];
+    }
+
+    $apiKey = $config['yandex_api_key'] ?? '';
+    $folderId = $config['yandex_folder_id'] ?? '';
+    $model = $config['yandex_gpt_model'] ?? 'yandexgpt-lite';
+
+    if (!$apiKey || $apiKey === 'ВСТАВЬТЕ_КЛЮЧ_YANDEX_API') {
+        respond(['reply' => 'Чат-гид временно недоступен. API-ключ не настроен.']);
+    }
+
+    $museumData = buildMuseumContext($db);
+    $systemPrompt = getSetting($db, 'chat_system_prompt',
+        "Ты — виртуальный гид интерактивного музея Саратовского военного ордена Жукова Краснознамённого института войск национальной гвардии РФ (СВКИ).\nОтвечай на вопросы посетителей, используя ТОЛЬКО информацию из данных музея ниже.\nЕсли информации нет — скажи, что не располагаешь такими данными.\nОтвечай кратко (до 3-4 предложений), дружелюбно, на русском языке.\nЕсли спрашивают о герое — укажи имя, звание и краткую биографию.\nЕсли спрашивают фото — вставь путь в формате [ФОТО:путь_к_файлу].\n"
+    );
+
+    $messages = [
+        ['role' => 'system', 'text' => $systemPrompt . "\n\n== ДАННЫЕ МУЗЕЯ ==\n" . $museumData]
+    ];
+
+    $history = $body['history'] ?? [];
+    foreach ($history as $m) {
+        if (($m['sender'] ?? '') === 'user') $messages[] = ['role' => 'user', 'text' => $m['text']];
+        elseif (($m['sender'] ?? '') === 'bot') $messages[] = ['role' => 'assistant', 'text' => $m['text']];
+    }
+    $messages[] = ['role' => 'user', 'text' => $message];
+
+    $payload = json_encode([
+        'modelUri' => 'gpt://' . $folderId . '/' . $model,
+        'completionOptions' => ['stream' => false, 'temperature' => 0.4, 'maxTokens' => '1000'],
+        'messages' => $messages
+    ]);
+
+    $ch = curl_init('https://llm.api.cloud.yandex.net/foundationModels/v1/completion');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'Authorization: Api-Key ' . $apiKey,
+            'x-folder-id: ' . $folderId
+        ],
+        CURLOPT_TIMEOUT => 30
+    ]);
+    $result = curl_exec($ch);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($err) {
+        respond(['reply' => 'Ошибка связи с сервисом. Попробуйте позже.']);
+    }
+
+    $data = json_decode($result, true);
+    if (isset($data['result']['alternatives'][0]['message']['text'])) {
+        respond(['reply' => $data['result']['alternatives'][0]['message']['text']]);
+    } else {
+        respond(['reply' => 'Не удалось получить ответ. Попробуйте переформулировать вопрос.']);
+    }
+}
+
+if ($uri === '/api/chat/tts' && $method === 'POST') {
+    $body = jsonBody();
+    $text = $body['text'] ?? '';
+    if (!$text) respond(['error' => 'Текст не указан'], 400);
+
+    $configPath = __DIR__ . '/chat_config.json';
+    $config = [];
+    if (file_exists($configPath)) {
+        $config = json_decode(file_get_contents($configPath), true) ?: [];
+    }
+
+    $apiKey = $config['yandex_api_key'] ?? '';
+    $folderId = $config['yandex_folder_id'] ?? '';
+    $voice = $config['yandex_tts_voice'] ?? 'filipp';
+
+    if (!$apiKey || $apiKey === 'ВСТАВЬТЕ_КЛЮЧ_YANDEX_API') {
+        respond(['error' => 'TTS не настроен'], 503);
+    }
+
+    $postData = http_build_query([
+        'text' => mb_substr($text, 0, 1000),
+        'lang' => 'ru-RU',
+        'voice' => $voice,
+        'format' => 'mp3',
+        'folderId' => $folderId
+    ]);
+
+    $ch = curl_init('https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $postData,
+        CURLOPT_HTTPHEADER => ['Authorization: Api-Key ' . $apiKey],
+        CURLOPT_TIMEOUT => 15
+    ]);
+    $audioData = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode !== 200 || !$audioData) {
+        respond(['error' => 'TTS ошибка'], 503);
+    }
+
+    header('Content-Type: audio/mpeg');
+    header('Content-Length: ' . strlen($audioData));
+    echo $audioData;
+    exit;
+}
+
+// Admin chat settings
+if ($uri === '/api/admin/chat_settings' && $method === 'GET') {
+    requireAdmin();
+    respond([
+        'greeting' => getSetting($db, 'chat_greeting', ''),
+        'system_prompt' => getSetting($db, 'chat_system_prompt', ''),
+        'quick_buttons' => getSetting($db, 'chat_quick_buttons', '[]'),
+        'idle_video' => getSetting($db, 'chat_idle_video', 'images/guide_idle.mp4'),
+        'talking_video' => getSetting($db, 'chat_talking_video', 'images/guide_talking.mp4')
+    ]);
+}
+
+if ($uri === '/api/admin/chat_settings' && $method === 'PUT') {
+    requireAdmin();
+    $body = jsonBody();
+    if (isset($body['greeting'])) upsertSetting($db, 'chat_greeting', $body['greeting']);
+    if (isset($body['system_prompt'])) upsertSetting($db, 'chat_system_prompt', $body['system_prompt']);
+    if (isset($body['quick_buttons'])) {
+        $val = is_string($body['quick_buttons']) ? $body['quick_buttons'] : json_encode($body['quick_buttons']);
+        upsertSetting($db, 'chat_quick_buttons', $val);
+    }
+    if (isset($body['idle_video'])) upsertSetting($db, 'chat_idle_video', $body['idle_video']);
+    if (isset($body['talking_video'])) upsertSetting($db, 'chat_talking_video', $body['talking_video']);
+    respond(['success' => true]);
+}
+
+if (preg_match('#^/api/admin/chat_video/(idle|talking)$#', $uri, $m) && $method === 'POST') {
+    requireAdmin();
+    if (empty($_FILES['video'])) respond(['error' => 'Файл не загружен'], 400);
+    $file = $_FILES['video'];
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if (!in_array($ext, ['mp4', 'webm', 'gif'])) respond(['error' => 'Только MP4, WebM, GIF'], 400);
+    $type = $m[1];
+    $newName = 'guide_' . $type . '_' . time() . '.' . $ext;
+    $dest = __DIR__ . '/uploads/' . $newName;
+    if (move_uploaded_file($file['tmp_name'], $dest)) {
+        $key = $type === 'talking' ? 'chat_talking_video' : 'chat_idle_video';
+        $url = 'uploads/' . $newName;
+        upsertSetting($db, $key, $url);
+        respond(['url' => $url]);
+    } else {
+        respond(['error' => 'Ошибка загрузки'], 500);
+    }
+}
+
 // Not found
 http_response_code(404);
 echo json_encode(['error' => 'Not found']);
